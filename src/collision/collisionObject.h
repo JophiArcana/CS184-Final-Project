@@ -11,11 +11,12 @@ using namespace nanogui;
 
 class CollisionObject {
 public:
-  virtual void render(GLShader &shader) = 0;
-  virtual void collide(PointMass &pm) = 0;
+    virtual void render(GLShader &shader) = 0;
+
+    virtual void collide(PointMass &pm) = 0;
 
 private:
-  double friction;
+    double friction;
 };
 
 #endif /* COLLISIONOBJECT */

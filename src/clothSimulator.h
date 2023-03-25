@@ -11,142 +11,161 @@
 using namespace nanogui;
 
 struct UserShader;
-enum ShaderTypeHint { WIREFRAME = 0, NORMALS = 1, PHONG = 2 };
+enum ShaderTypeHint {
+    WIREFRAME = 0, NORMALS = 1, PHONG = 2
+};
 
 class ClothSimulator {
 public:
-  ClothSimulator(std::string project_root, Screen *screen);
-  ~ClothSimulator();
+    ClothSimulator(std::string project_root, Screen *screen);
 
-  void init();
+    ~ClothSimulator();
 
-  void loadCloth(Cloth *cloth);
-  void loadClothParameters(ClothParameters *cp);
-  void loadCollisionObjects(vector<CollisionObject *> *objects);
-  virtual bool isAlive();
-  virtual void drawContents();
+    void init();
 
-  // Screen events
+    void loadCloth(Cloth *cloth);
 
-  virtual bool cursorPosCallbackEvent(double x, double y);
-  virtual bool mouseButtonCallbackEvent(int button, int action, int modifiers);
-  virtual bool keyCallbackEvent(int key, int scancode, int action, int mods);
-  virtual bool dropCallbackEvent(int count, const char **filenames);
-  virtual bool scrollCallbackEvent(double x, double y);
-  virtual bool resizeCallbackEvent(int width, int height);
+    void loadClothParameters(ClothParameters *cp);
+
+    void loadCollisionObjects(vector<CollisionObject *> *objects);
+
+    virtual bool isAlive();
+
+    virtual void drawContents();
+
+    // Screen events
+
+    virtual bool cursorPosCallbackEvent(double x, double y);
+
+    virtual bool mouseButtonCallbackEvent(int button, int action, int modifiers);
+
+    virtual bool keyCallbackEvent(int key, int scancode, int action, int mods);
+
+    virtual bool dropCallbackEvent(int count, const char **filenames);
+
+    virtual bool scrollCallbackEvent(double x, double y);
+
+    virtual bool resizeCallbackEvent(int width, int height);
 
 private:
-  virtual void initGUI(Screen *screen);
-  void drawWireframe(GLShader &shader);
-  void drawNormals(GLShader &shader);
-  void drawPhong(GLShader &shader);
-  
-  void load_shaders();
-  void load_textures();
-  
-  // File management
-  
-  std::string m_project_root;
+    virtual void initGUI(Screen *screen);
 
-  // Camera methods
+    void drawWireframe(GLShader &shader);
 
-  virtual void resetCamera();
-  virtual Matrix4f getProjectionMatrix();
-  virtual Matrix4f getViewMatrix();
+    void drawNormals(GLShader &shader);
 
-  // Default simulation values
+    void drawPhong(GLShader &shader);
 
-  int frames_per_sec = 90;
-  int simulation_steps = 30;
+    void load_shaders();
 
-  CGL::Vector3D gravity = CGL::Vector3D(0, -9.8, 0);
-  nanogui::Color color = nanogui::Color(1.0f, 1.0f, 1.0f, 1.0f);
+    void load_textures();
 
-  Cloth *cloth;
-  ClothParameters *cp;
-  vector<CollisionObject *> *collision_objects;
+    // File management
 
-  // OpenGL attributes
+    std::string m_project_root;
 
-  int active_shader_idx = 0;
+    // Camera methods
 
-  vector<UserShader> shaders;
-  vector<std::string> shaders_combobox_names;
-  
-  // OpenGL textures
-  
-  Vector3D m_gl_texture_1_size;
-  Vector3D m_gl_texture_2_size;
-  Vector3D m_gl_texture_3_size;
-  Vector3D m_gl_texture_4_size;
-  GLuint m_gl_texture_1;
-  GLuint m_gl_texture_2;
-  GLuint m_gl_texture_3;
-  GLuint m_gl_texture_4;
-  GLuint m_gl_cubemap_tex;
-  
-  // OpenGL customizable inputs
-  
-  double m_normal_scaling = 2.0;
-  double m_height_scaling = 0.1;
+    virtual void resetCamera();
 
-  // Camera attributes
+    virtual Matrix4f getProjectionMatrix();
 
-  CGL::Camera camera;
-  CGL::Camera canonicalCamera;
+    virtual Matrix4f getViewMatrix();
 
-  double view_distance;
-  double canonical_view_distance;
-  double min_view_distance;
-  double max_view_distance;
+    // Default simulation values
 
-  double scroll_rate;
+    int frames_per_sec = 90;
+    int simulation_steps = 30;
 
-  // Screen methods
+    CGL::Vector3D gravity = CGL::Vector3D(0, -9.8, 0);
+    nanogui::Color color = nanogui::Color(1.0f, 1.0f, 1.0f, 1.0f);
 
-  Screen *screen;
-  void mouseLeftDragged(double x, double y);
-  void mouseRightDragged(double x, double y);
-  void mouseMoved(double x, double y);
+    Cloth *cloth;
+    ClothParameters *cp;
+    vector<CollisionObject *> *collision_objects;
 
-  // Mouse flags
+    // OpenGL attributes
 
-  bool left_down = false;
-  bool right_down = false;
-  bool middle_down = false;
+    int active_shader_idx = 0;
 
-  // Keyboard flags
+    vector<UserShader> shaders;
+    vector<std::string> shaders_combobox_names;
 
-  bool ctrl_down = false;
+    // OpenGL textures
 
-  // Simulation flags
+    Vector3D m_gl_texture_1_size;
+    Vector3D m_gl_texture_2_size;
+    Vector3D m_gl_texture_3_size;
+    Vector3D m_gl_texture_4_size;
+    GLuint m_gl_texture_1;
+    GLuint m_gl_texture_2;
+    GLuint m_gl_texture_3;
+    GLuint m_gl_texture_4;
+    GLuint m_gl_cubemap_tex;
 
-  bool is_paused = true;
+    // OpenGL customizable inputs
 
-  // Screen attributes
+    double m_normal_scaling = 2.0;
+    double m_height_scaling = 0.1;
 
-  int mouse_x;
-  int mouse_y;
+    // Camera attributes
 
-  int screen_w;
-  int screen_h;
+    CGL::Camera camera;
+    CGL::Camera canonicalCamera;
 
-  bool is_alive = true;
+    double view_distance;
+    double canonical_view_distance;
+    double min_view_distance;
+    double max_view_distance;
 
-  Vector2i default_window_size = Vector2i(1024, 800);
+    double scroll_rate;
+
+    // Screen methods
+
+    Screen *screen;
+
+    void mouseLeftDragged(double x, double y);
+
+    void mouseRightDragged(double x, double y);
+
+    void mouseMoved(double x, double y);
+
+    // Mouse flags
+
+    bool left_down = false;
+    bool right_down = false;
+    bool middle_down = false;
+
+    // Keyboard flags
+
+    bool ctrl_down = false;
+
+    // Simulation flags
+
+    bool is_paused = true;
+
+    // Screen attributes
+
+    int mouse_x;
+    int mouse_y;
+
+    int screen_w;
+    int screen_h;
+
+    bool is_alive = true;
+
+    Vector2i default_window_size = Vector2i(1024, 800);
 };
 
 struct UserShader {
-  UserShader(std::string display_name, std::shared_ptr<GLShader> nanogui_shader, ShaderTypeHint type_hint)
-  : display_name(display_name)
-  , nanogui_shader(nanogui_shader)
-  , type_hint(type_hint) {
-  }
-  
-  std::shared_ptr<GLShader> nanogui_shader;
-  std::string display_name;
-  ShaderTypeHint type_hint;
-  
+    UserShader(std::string display_name, std::shared_ptr<GLShader> nanogui_shader, ShaderTypeHint type_hint)
+            : display_name(display_name), nanogui_shader(nanogui_shader), type_hint(type_hint) {
+    }
+
+    std::shared_ptr<GLShader> nanogui_shader;
+    std::string display_name;
+    ShaderTypeHint type_hint;
+
 };
 
 #endif // CGL_CLOTH_SIM_H

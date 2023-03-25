@@ -9,55 +9,56 @@
 using std::string;
 using std::vector;
 
-namespace CGL { namespace Collada {
+namespace CGL {
+    namespace Collada {
 
 /*
   Subclassed with type-specific info, with a type tag for easy unpacking.
 */
-class Instance {
- public:
-  /*
-    There are a variety of different types of objects
-    that can appear in a scene (lights, cameras, etc.);
-    the e_InstanceType enum flags a node in the scene
-    hierarchy as being one of these types.
-  */
-  enum Type {
-    CAMERA,
-    LIGHT,
-    SPHERE,
-    POLYMESH,
-    MATERIAL
-  };
+        class Instance {
+        public:
+            /*
+              There are a variety of different types of objects
+              that can appear in a scene (lights, cameras, etc.);
+              the e_InstanceType enum flags a node in the scene
+              hierarchy as being one of these types.
+            */
+            enum Type {
+                CAMERA,
+                LIGHT,
+                SPHERE,
+                POLYMESH,
+                MATERIAL
+            };
 
-  Type type;  	 ///< type of instance
-  string id;     ///< instance ID
-  string name;   ///< instance name
-}; // struct Instance
+            Type type;     ///< type of instance
+            string id;     ///< instance ID
+            string name;   ///< instance name
+        }; // struct Instance
 
 /*
   An instance, plus a transformation matrix.
 */
-struct Node {
+        struct Node {
 
-  string id;
-  string name;
+            string id;
+            string name;
 
-  Instance* instance;   ///< instance
-  Matrix4x4 transform;  ///< transformation
+            Instance *instance;   ///< instance
+            Matrix4x4 transform;  ///< transformation
 
-  Node() : instance(nullptr), transform( Matrix4x4::identity() ) { }
+            Node() : instance(nullptr), transform(Matrix4x4::identity()) {}
 
-}; // struct Node
+        }; // struct Node
 
 /*
   The scene that ColladaParser generates and passes to MeshEdit.
 */
-struct SceneInfo {
-  vector<Node> nodes;
-};
+        struct SceneInfo {
+            vector<Node> nodes;
+        };
 
-} // namespace Collada
+    } // namespace Collada
 } // namespace CGL
 
 #endif // CGL_COLLADA_COLLADAINFO_H

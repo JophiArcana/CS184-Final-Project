@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <math.h>
 #include <random>
@@ -37,30 +38,21 @@ void Cloth::buildGrid() {
     // TODO (Part 1): Build a grid of masses and springs.
     double x_inc = (double) this->width / (this->num_width_points - 1);
     double y_inc = (double) this->height / (this->num_height_points - 1);
+    cout << this->width << " " << this->height << endl;
 
     cout << this->num_width_points << " x " << this->num_height_points << endl;
-
     for (int yi = 0; yi < this->num_height_points; yi++) {
-        int index = 0;
-        cout << "Size " << this->pinned[yi].size() << endl;
-//        cout << "[";
-//        for (int p : this->pinned[yi])
-//            cout << p << ", ";
-//        cout << "]" << endl;
         for (int xi = 0; xi < this->num_width_points; xi++) {
-            cout << xi << " " << yi << endl;
-            cout << "\tIndex " << index << endl;
-            bool is_pinned = (index < this->pinned[yi].size() && this->pinned[yi][index] == xi);
-            if (is_pinned)
-                index++;
             if (this->orientation == HORIZONTAL) {
-                this->point_masses.emplace_back(Vector3D(xi * x_inc, 1, yi * y_inc), is_pinned);
+                this->point_masses.emplace_back(Vector3D(xi * x_inc, 1, yi * y_inc), false);
             } else {
-                this->point_masses.emplace_back(Vector3D(xi * x_inc, yi * y_inc, uniform(-0.001, 0.001)), is_pinned);
+                this->point_masses.emplace_back(Vector3D(xi * x_inc, yi * y_inc, uniform(-0.001, 0.001)),  false);
             }
         }
     }
-    cout << "Here" << endl;
+
+    for (vector<int> p : this->pinned)
+        this->point_masses[p[1] * this->num_width_points + p[0]].pinned = true;
 
     for (int yi = 0; yi < this->num_height_points; yi++) {
         for (int xi = 0; xi < this->num_width_points; xi++) {
@@ -94,13 +86,13 @@ void Cloth::buildGrid() {
                 this->springs.emplace_back(
                         &this->point_masses[index],
                         &this->point_masses[index + 2],
-                        STRUCTURAL
+                        BENDING
                 );
             if (yi < this->num_height_points - 2) {
                 this->springs.emplace_back(
                         &this->point_masses[index],
                         &this->point_masses[index + 2 * this->num_width_points],
-                        STRUCTURAL
+                        BENDING
                 );
             }
         }
@@ -315,3 +307,4 @@ void Cloth::buildClothMesh() {
     clothMesh->triangles = triangles;
     this->clothMesh = clothMesh;
 }
+

@@ -130,7 +130,7 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
     // TODO (Part 2): Use Verlet integration to compute new point mass positions
     for (PointMass &p: this->point_masses) {
         if (!p.pinned) {
-            Vector3D new_position = p.position + (1. - 0.01 * cp->damping) * (p.position - p.last_position) +
+            Vector3D new_position = p.position + (1 - 0.01 * cp->damping) * (p.position - p.last_position) +
                                     p.forces * (delta_t * delta_t / mass);
             p.last_position = p.position;
             p.position = new_position;
@@ -146,6 +146,21 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
 
     // TODO (Part 2): Constrain the changes to be such that the spring does not change
     // in length more than 10% per timestep [Provot 1995].
+    for (Spring &s: this->springs) {
+        Vector3D last_ab = s.pm_b->last_position - s.pm_a->last_position, ab = s.pm_b->position - s.pm_a->position;
+        double last_ab_norm = last_ab.norm(), ab_norm = ab.norm();
+        if (ab_norm > 1.1 * last_ab_norm) {
+            Vector3D adjustment = (1 - 1.1 * last_ab_norm / ab_norm) * ab;
+            if (s.pm_a->pinned) {
+                s.pm_b->position -= adjustment;
+            } else if (s.pm_b->pinned) {
+                s.pm_a->position += adjustment;
+            } else {
+                s.pm_a->position += adjustment / 2;
+                s.pm_b->position -= adjustment / 2;
+            }
+        }
+    }
 
 }
 

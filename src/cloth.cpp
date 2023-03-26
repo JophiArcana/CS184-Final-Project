@@ -38,20 +38,15 @@ void Cloth::buildGrid() {
     // TODO (Part 1): Build a grid of masses and springs.
     double x_inc = (double) this->width / (this->num_width_points - 1);
     double y_inc = (double) this->height / (this->num_height_points - 1);
-    cout << this->width << " " << this->height << endl;
 
-    cout << this->num_width_points << " x " << this->num_height_points << endl;
-    for (int yi = 0; yi < this->num_height_points; yi++) {
-        for (int xi = 0; xi < this->num_width_points; xi++) {
-            if (this->orientation == HORIZONTAL) {
+    for (int yi = 0; yi < this->num_height_points; yi++)
+        for (int xi = 0; xi < this->num_width_points; xi++)
+            if (this->orientation == HORIZONTAL)
                 this->point_masses.emplace_back(Vector3D(xi * x_inc, 1, yi * y_inc), false);
-            } else {
+            else
                 this->point_masses.emplace_back(Vector3D(xi * x_inc, yi * y_inc, uniform(-0.001, 0.001)),  false);
-            }
-        }
-    }
 
-    for (vector<int> p : this->pinned)
+    for (vector<int> &p : this->pinned)
         this->point_masses[p[1] * this->num_width_points + p[0]].pinned = true;
 
     for (int yi = 0; yi < this->num_height_points; yi++) {
@@ -88,13 +83,12 @@ void Cloth::buildGrid() {
                         &this->point_masses[index + 2],
                         BENDING
                 );
-            if (yi < this->num_height_points - 2) {
+            if (yi < this->num_height_points - 2)
                 this->springs.emplace_back(
                         &this->point_masses[index],
                         &this->point_masses[index + 2 * this->num_width_points],
                         BENDING
                 );
-            }
         }
     }
 }
@@ -106,9 +100,47 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
     double delta_t = 1.0f / frames_per_sec / simulation_steps;
 
     // TODO (Part 2): Compute total force acting on each point mass.
+    Vector3D total_external_force(0);
+    for (Vector3D &acc : external_accelerations)
+        total_external_force += acc;
+    total_external_force *= mass;
+
+    for (PointMass &p : this->point_masses)
+        p.forces = total_external_force;    // External force
+
+    for (Spring &s : this->springs) {
+        Vector3D ab = s.pm_b->position - s.pm_a->position;
+        double ab_norm = ab.norm();
+        if (std::abs(ab_norm - s.rest_length) > EPS_D)
+            cout << (ab_norm - s.rest_length) << endl;
+
+        double spring_force_magnitude = 0;
+        if ((s.spring_type == CGL::STRUCTURAL && cp->enable_structural_constraints) ||
+                (s.spring_type == CGL::SHEARING && cp->enable_shearing_constraints) ||
+                (s.spring_type == CGL::BENDING && cp->enable_bending_constraints)) {
+            spring_force_magnitude = cp->ks * (ab_norm - s.rest_length);
+        }
+        if (s.spring_type == CGL::BENDING)
+            spring_force_magnitude *= 0.2;
+
+        Vector3D F = ab * (spring_force_magnitude / ab_norm);
+        s.pm_a->forces += F;
+        s.pm_b->forces -= F;
+    }
 
 
     // TODO (Part 2): Use Verlet integration to compute new point mass positions
+    for (PointMass p : this->point_masses) {
+        // cout << p.forces << endl;
+        if (!p.pinned) {
+            Vector3D new_position = p.position + (1 - 0.01 * cp->damping) * (p.position - p.last_position) +
+                                    p.forces * (delta_t * delta_t / mass);
+            p.last_position = p.position;
+            p.position = new_position;
+
+            // cout << "Displacement: " << (p.position - p.last_position).norm() << endl;
+        }
+    }
 
 
     // TODO (Part 4): Handle self-collisions.

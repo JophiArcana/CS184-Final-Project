@@ -15,7 +15,16 @@ void main() {
   // YOUR CODE HERE
   
   // (Placeholder code. You will want to replace it.)
-  out_color = (vec4(1, 1, 1, 0) + v_normal) / 2;
-  out_color.a = 1;
+  // out_color = (vec4(1, 1, 1, 0) + v_normal) / 2;
+  // out_color.a = 1;
+
+  vec3 vv = u_light_pos - vec3(v_position);
+  vec3 h = vv + u_cam_pos - vec3(v_position);
+  h = h / length(h);
+
+  float multiplier = max(0.0, dot(vv, vec3(v_normal)));
+  float multiplier2 = pow(max(0.0, dot(vec3(v_normal), h)), 25);
+  out_color = 0.00 + 0.5 * u_color * multiplier / length(vv) / length(vv) + 2 * u_color * multiplier2 / length(vv) / length(vv);
+  out_color[3] = 1.0;
 }
 

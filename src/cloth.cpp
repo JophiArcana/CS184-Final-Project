@@ -139,11 +139,15 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
 
 
     // TODO (Part 4): Handle self-collisions.
+    this->build_spatial_map();
+    for (PointMass &pm: this->point_masses) {
+        this->self_collide(pm, simulation_steps);
+    }
 
 
     // TODO (Part 3): Handle collisions with other primitives.
     for (PointMass &pm: this->point_masses) {
-        for (CollisionObject* co: *collision_objects) {
+        for (CollisionObject *co: *collision_objects) {
             co->collide(pm);
         }
     }
@@ -176,8 +180,13 @@ void Cloth::build_spatial_map() {
     map.clear();
 
     // TODO (Part 4): Build a spatial map out of all of the point masses.
-    for (PointMass &pm: this->point_masses)
-        this->map[this->hash_position(pm.position)]->push_back(&pm);
+    for (PointMass &pm: this->point_masses) {
+        float h = this->hash_position(pm.position);
+        if (this->map.find(h) == this->map.end()) {
+            this->map[h] = new vector<PointMass *>();
+        }
+        this->map[h]->push_back(&pm);
+    }
 }
 
 void Cloth::self_collide(PointMass &pm, double simulation_steps) {
@@ -189,12 +198,13 @@ void Cloth::self_collide(PointMass &pm, double simulation_steps) {
             Vector3D displacement = pm.position - p->position;
             double d = displacement.norm();
             if (d < 2 * this->thickness) {
-                correction += displacement * (2 * this->thickness) / d;
+                correction += displacement * ((2 * this->thickness) / d - 1);
                 num_corrections++;
             }
         }
     }
-    pm.position += correction / (num_corrections * simulation_steps);
+    if (num_corrections > 0)
+        pm.position += correction / (num_corrections * simulation_steps);
 }
 
 float Cloth::hash_position(Vector3D pos) {

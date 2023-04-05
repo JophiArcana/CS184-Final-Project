@@ -21,14 +21,30 @@ out vec4 out_color;
 
 float h(vec2 uv) {
   // You may want to use this helper function...
-  return 0.0;
+  return texture(u_texture_2, uv)[0];
 }
 
 void main() {
   // YOUR CODE HERE
   
-  // (Placeholder code. You will want to replace it.)
-  out_color = (vec4(1, 1, 1, 0) + v_normal) / 2;
-  out_color.a = 1;
+      vec3 b = cross(vec3(v_normal), vec3(v_tangent));
+      mat3 tbn = mat3(vec3(v_tangent), b, vec3(v_tangent));
+
+      float dU = (h(vec2(v_uv[0] + 1.0 / float(u_texture_2_size[0]), v_uv[1])) - h(v_uv)) * u_height_scaling * u_normal_scaling;
+      float dV = (h(vec2(v_uv[0], v_uv[1] + 1.0 / float(u_texture_2_size[1]))) - h(v_uv)) * u_height_scaling * u_normal_scaling;
+
+      vec3 no = vec3(-dU, -dV, 1);
+      vec3 nd = tbn * no;
+
+      nd = nd / length(nd);
+
+      vec3 vv = u_light_pos - vec3(v_position);
+      vec3 h = vv + u_cam_pos - vec3(v_position);
+      h = h / length(h);
+
+      float multiplier = max(0.0, dot(vv, vec3(nd)));
+      float multiplier2 = pow(max(0.0, dot(vec3(nd), h)), 25);
+      out_color = 0.10 + u_color * multiplier / length(vv) / length(vv) + 2.5 * u_color * multiplier2 / length(vv) / length(vv);
+      out_color[3] = 1.0;
 }
 

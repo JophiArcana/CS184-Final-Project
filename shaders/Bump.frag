@@ -38,8 +38,6 @@ void main() {
 
     nd = nd / length(nd);
 
-    // nd = vec3(v_normal);
-
     vec3 vv = u_light_pos - vec3(v_position);
     vec3 h = vv + u_cam_pos - vec3(v_position);
     h = h / length(h);

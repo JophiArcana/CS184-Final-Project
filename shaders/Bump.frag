@@ -39,12 +39,13 @@ void main() {
     nd = nd / length(nd);
 
     vec3 vv = u_light_pos - vec3(v_position);
-    vec3 h = vv + u_cam_pos - vec3(v_position);
-    h = h / length(h);
+      vec3 ll = u_cam_pos - vec3(v_position);
+      vec3 h = (vv / length(vv)) + (ll / length(ll));
+      h = h / length(h);
 
     float multiplier = max(0.0, dot(vv, vec3(nd)));
-    float multiplier2 = pow(max(0.0, dot(vec3(nd), h)), 25);
-    out_color = 0.10 + u_color * multiplier / length(vv) / length(vv) + 2.5 * u_color * multiplier2 / length(vv) / length(vv);
+    float multiplier2 = pow(max(0.0, dot(vec3(nd), h)), 100);
+    out_color = 0.10 + 0.8 * u_color * multiplier / length(vv) / length(vv) + 4 * u_color * multiplier2 / length(vv) / length(vv);
     out_color[3] = 1.0;
 }
 

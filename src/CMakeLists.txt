@@ -21,7 +21,7 @@ set(CLOTHSIM_VIEWER_SOURCE
 
         # Camera
         camera.cpp
-        )
+        Fluid.h Fluid.cpp FluidMesh.h FluidMesh.cpp)
 
 # Windows-only sources
 if (WIN32)

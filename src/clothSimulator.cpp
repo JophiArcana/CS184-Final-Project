@@ -177,7 +177,7 @@ ClothSimulator::~ClothSimulator() {
     glDeleteTextures(1, &m_gl_texture_4);
     glDeleteTextures(1, &m_gl_cubemap_tex);
 
-    if (cloth) delete cloth;
+    /if (cloth) delete cloth;
     if (cp) delete cp;
     if (collision_objects) delete collision_objects;
 }

@@ -75,6 +75,10 @@ class Vector3D {
     return Vector3D( x * c, y * c, z * c );
   }
 
+  inline Vector3D operator*(const Vector3D& v ) const {
+      return Vector3D(x * v.x, y * v.y, z * v.z);
+  }
+
   // scalar division
   inline Vector3D operator/( const double& c ) const {
     const double rc = 1.0/c;

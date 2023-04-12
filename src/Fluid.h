@@ -5,9 +5,13 @@
 #ifndef CLOTHSIM_FLUID_H
 #define CLOTHSIM_FLUID_H
 
+#include <random>
 #include "pointMass.h"
 #include "./collision/collisionObject.h"
+#include "FluidMesh.h"
 #include "CGL/CGL.h"
+
+#define uniform(a, b)   (a + (double) (b - a) * std::rand() / RAND_MAX)
 
 
 class Fluid {
@@ -22,9 +26,11 @@ class Fluid {
 
     int LENGTH, WIDTH, HEIGHT;
     int NUM_PARTICLES;
+
     double PARTICLE_RADIUS = 0.05;
 
     std::vector<CollisionObject *> collisionObjects;
+    FluidMesh *mesh;
 
     void buildFluidMesh();
 

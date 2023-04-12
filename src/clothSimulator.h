@@ -23,9 +23,11 @@ public:
 
     void init();
 
-    void loadCloth(Cloth *cloth);
+    void loadFluid(Fluid *fluid);
 
-    void loadClothParameters(ClothParameters *cp);
+//    void loadCloth(Cloth *cloth);
+//
+//    void loadClothParameters(ClothParameters *cp);
 
     void loadCollisionObjects(vector<CollisionObject *> *objects);
 
@@ -80,9 +82,11 @@ private:
     CGL::Vector3D gravity = CGL::Vector3D(0, -9.8, 0);
     nanogui::Color color = nanogui::Color(1.0f, 1.0f, 1.0f, 1.0f);
 
-    Cloth *cloth;
-    ClothParameters *cp;
+//    Cloth *cloth;
+//    ClothParameters *cp;
     vector<CollisionObject *> *collision_objects;
+
+    Fluid *fluid;
 
     // OpenGL attributes
 

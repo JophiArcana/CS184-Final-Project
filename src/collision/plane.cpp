@@ -12,23 +12,25 @@ using namespace CGL;
 
 void Plane::collide(PointMass &pm) {
     // TODO (Part 3): Handle collisions with planes.
-    if (dot(pm.position - this->point, this->normal) * dot(pm.last_position - this->point, this->normal) >= 0) {
+    if (dot(pm.position + pm.velocity * delta_t - this->point, this->normal) * dot(pm.position - this->point, this->normal) >= 0) {
         return; // no collision
     }
 
-    Vector3D vec = pm.position - pm.last_position;
+    Vector3D vec = velocity * delta_t;
     // dot(pm.last_position + t * vec, normal) = 0
     // dot product is linear
     // dot(pm.last_position, normal) + t * dot(vec, normal) = 0
-    double t = - dot(pm.last_position, normal) / dot(vec, normal);
+    double t = - dot(pm.position, normal) / dot(vec, normal);
 
     // calculating offset
-    double currDistance = dot(pm.last_position - this->point, this->normal);
+    double currDistance = dot(pm.position - this->point, this->normal);
     double ratio = (currDistance - SURFACE_OFFSET) / currDistance;
 
     Vector3D correctionVector = t * vec * ratio;
 
-    pm.position = pm.last_position + correctionVector * (1 - friction);
+    pm.position = pm.position + correctionVector * (1 - friction);
+
+    pm.velocity = pm.velocity - 2 * this->normal * pm.velocity;
 }
 
 void Plane::render(GLShader &shader) {

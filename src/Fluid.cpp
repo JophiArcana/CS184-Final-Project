@@ -7,11 +7,12 @@
 #include "./collision/plane.h"
 
 
-
+/** TODO: add fluid density maybe */
 Fluid::Fluid(int length, int width, int height, int nParticles) {
     this->LENGTH = length;
     this->WIDTH = width;
     this->HEIGHT = height;
+    this->NUM_PARTICLES = nParticles;
     this->NUM_PARTICLES = nParticles;
     grid = new std::vector<PointMass>[LENGTH * WIDTH * HEIGHT];
 
@@ -29,13 +30,14 @@ Fluid::Fluid(int length, int width, int height, int nParticles) {
 
     // Mersenne twister PRNG, initialized with seed from previous random device instance
     std::mt19937 gen(random_device());
-    std::normal_distribution<float> norm_dist_gen(0, 2);
+    // std of water velocity is approx 642.50364 m/s
+    std::normal_distribution<float> norm_dist_gen(0, 642.503643481);
     for (int i = 0; i < nParticles; i += 1) {
         Vector3D position = Vector3D(uniform(0, LENGTH), uniform(0, WIDTH), uniform(0, 0.5 * HEIGHT));
         Vector3D velocity = Vector3D(norm_dist_gen(gen), norm_dist_gen(gen), norm_dist_gen(gen));
         PointMass pt = PointMass(position, velocity, false);
 
-        grid[int(position[2]) + HEIGHT * int(position[1]) + WIDTH * HEIGHT * int(position[0])].push_back(pt);
+        this->get_position(position[0], position[1], position[2]).push_back(pt);
     }
 }
 
@@ -46,11 +48,14 @@ std::vector<PointMass> &Fluid::get_position(int x, int y, int z) {
 void Fluid::simulate(double frames_per_sec, double simulation_steps, std::vector<Vector3D> external_accelerations) {
     double delta_t = 1.0f / frames_per_sec / simulation_steps;
 
+    Vector3D total_acc(0);
+    for (const Vector3D &acc: external_accelerations) {
+        total_acc += acc;
+    }
+    total_acc *= delta_t;
     for (int index = 0; index < LENGTH * WIDTH * HEIGHT; index += 1) {
-        for (PointMass pt: this->grid[index]) {
-            for (Vector3D acc: external_accelerations) {
-                pt.velocity += (acc * delta_t);
-            }
+        for (PointMass &pt: this->grid[index]) {
+            pt.velocity += total_acc;
         }
     }
 

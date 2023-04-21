@@ -920,7 +920,7 @@ void gebp_kernel<LhsScalar,RhsScalar,Index,DataMapper,mr,nr,ConjugateLhs,Conjuga
       // However, if depth is too small, we can extend the number of rows of these horizontal panels.
       // This actual number of rows is computed as follow:
       const Index l1 = defaultL1CacheSize; // in Bytes, TODO, l1 should be passed to this function.
-      // The max(1, ...) here is needed because we may be using blocking params larger than what our known l1 cache size
+      // The max(1, ...) here is needed because we may be using blocking PARAMS larger than what our known l1 cache size
       // suggests we should be using: either because our known l1 cache size is inaccurate (e.g. on Android, we can only guess),
       // or because we are testing specific blocking sizes.
       const Index actual_panel_rows = (3*LhsProgress) * std::max<Index>(1,( (l1 - sizeof(ResScalar)*mr*nr - depth*nr*sizeof(RhsScalar)) / (depth * sizeof(LhsScalar) * 3*LhsProgress) ));
@@ -1152,7 +1152,7 @@ void gebp_kernel<LhsScalar,RhsScalar,Index,DataMapper,mr,nr,ConjugateLhs,Conjuga
     if(mr>=2*Traits::LhsProgress)
     {
       const Index l1 = defaultL1CacheSize; // in Bytes, TODO, l1 should be passed to this function.
-      // The max(1, ...) here is needed because we may be using blocking params larger than what our known l1 cache size
+      // The max(1, ...) here is needed because we may be using blocking PARAMS larger than what our known l1 cache size
       // suggests we should be using: either because our known l1 cache size is inaccurate (e.g. on Android, we can only guess),
       // or because we are testing specific blocking sizes.
       Index actual_panel_rows = (2*LhsProgress) * std::max<Index>(1,( (l1 - sizeof(ResScalar)*mr*nr - depth*nr*sizeof(RhsScalar)) / (depth * sizeof(LhsScalar) * 2*LhsProgress) ));

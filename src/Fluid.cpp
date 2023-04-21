@@ -6,14 +6,15 @@
 #include "./collision/collisionObject.h"
 #include "./collision/plane.h"
 
+const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9);
 
 /** TODO: add fluid density maybe */
-Fluid::Fluid(int length, int width, int height, int nParticles) {
-    this->LENGTH = length;
-    this->WIDTH = width;
-    this->HEIGHT = height;
-    this->NUM_PARTICLES = nParticles;
-    this->NUM_PARTICLES = nParticles;
+Fluid::Fluid(int length, int width, int height, int nParticles, FluidParameters params) :
+        LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles), PARAMS(params) {
+    double volume = length * width * height;
+    double true_num_particles = volume * params.density * 6.022E23 / params.molar_mass;
+    this->SMOOTHING_RADIUS = params.average_distance * std::cbrt(true_num_particles / nParticles);
+
     grid = new std::vector<PointMass>[LENGTH * WIDTH * HEIGHT];
 
     // make planes
@@ -37,22 +38,30 @@ Fluid::Fluid(int length, int width, int height, int nParticles) {
         Vector3D velocity = Vector3D(norm_dist_gen(gen), norm_dist_gen(gen), norm_dist_gen(gen));
         PointMass pt = PointMass(position, velocity, false);
 
-        this->get_position(position[0], position[1], position[2]).push_back(pt);
+        this->get_position(position).push_back(pt);
     }
 }
 
-std::vector<PointMass> &Fluid::get_position(int x, int y, int z) {
-    return grid[z + HEIGHT * y + WIDTH * HEIGHT * x];
+std::vector<PointMass> &Fluid::get_position(const Vector3D &pos) {
+    return grid[(int) pos[2] + HEIGHT * ((int) pos[1] + WIDTH * (int) pos[0])];
 }
 
-void Fluid::simulate(double frames_per_sec, double simulation_steps, std::vector<Vector3D> external_accelerations) {
+void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vector<Vector3D> &external_accelerations) {
     double delta_t = 1.0f / frames_per_sec / simulation_steps;
+    double mass = (LENGTH * WIDTH * HEIGHT * density) / NUM_PARTICLES;
 
-    Vector3D total_acc(0);
+    Vector3D total_external_force(0);
     for (const Vector3D &acc: external_accelerations) {
-        total_acc += acc;
+        total_external_force += acc;
+    total_external_force *= mass;
+
+    for (int index = 0; index < LENGTH * WIDTH * HEIGHT; index += 1) {
+        for (PointMass &pt: this->grid[index]) {
+            pt.forces += total_external_force;
+        }
     }
-    total_acc *= delta_t;
+
+    /** Take out this part, should be handled in Verlet integration */
     for (int index = 0; index < LENGTH * WIDTH * HEIGHT; index += 1) {
         for (PointMass &pt: this->grid[index]) {
             pt.velocity += total_acc;
@@ -61,7 +70,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, std::vector
 
     /** handle collisions **/
     for (int index = 0; index < LENGTH * WIDTH * HEIGHT; index += 1) {
-        for (PointMass pt: this->grid[index]) {
+        for (PointMass &pt: this->grid[index]) {
             for (CollisionObject *co: this->collisionObjects) {
                 co->collide(pt);
             }
@@ -72,7 +81,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, std::vector
 
     /** update position **/
     for (int index = 0; index < LENGTH * WIDTH * HEIGHT; index += 1) {
-        for (PointMass pt: this->grid[index]) {
+        for (PointMass &pt: this->grid[index]) {
             pt.position = pt.position + pt.velocity * delta_t;
         }
     }

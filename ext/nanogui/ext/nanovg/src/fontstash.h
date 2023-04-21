@@ -1162,12 +1162,12 @@ static FONSglyph* fons__getGlyph(FONScontext* stash, FONSfont* font, unsigned in
 	}
 
 	// Debug code to color the glyph background
-/*	unsigned char* fdst = &stash->texData[glyph->x0 + glyph->y0 * stash->params.width];
+/*	unsigned char* fdst = &stash->texData[glyph->x0 + glyph->y0 * stash->PARAMS.width];
 	for (y = 0; y < gh; y++) {
 		for (x = 0; x < gw; x++) {
-			int a = (int)fdst[x+y*stash->params.width] + 20;
+			int a = (int)fdst[x+y*stash->PARAMS.width] + 20;
 			if (a > 255) a = 255;
-			fdst[x+y*stash->params.width] = a;
+			fdst[x+y*stash->PARAMS.width] = a;
 		}
 	}*/
 

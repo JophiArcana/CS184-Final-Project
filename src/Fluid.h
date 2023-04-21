@@ -31,9 +31,10 @@ struct FluidParameters {
 };
 
 class Fluid {
+public:
     static const FluidParameters WATER;
 
-    Fluid(int length, int width, int height, int nParticles, FluidParameters params);
+    Fluid(double length, double width, double height, int nParticles, FluidParameters params);
 
     std::vector<PointMass> &get_position(const Vector3D &pos);
 
@@ -42,16 +43,28 @@ class Fluid {
 
     std::vector<PointMass> *grid;
 
-    const int LENGTH, WIDTH, HEIGHT;
+    const double LENGTH, WIDTH, HEIGHT;
+    int G_LENGTH, G_WIDTH, G_HEIGHT;
     const int NUM_PARTICLES;
     const FluidParameters PARAMS;
     double SMOOTHING_RADIUS;
+    double PARTICLE_MASS;
 
     std::vector<CollisionObject *> collisionObjects;
     FluidMesh *mesh;
 
+    double W(const PointMass &p, const PointMass &q);
+    std::vector<double> batch_density(int index);
+    std::vector<Vector3D> batch_kernel_gradient(int index);
+
+    std::vector<Vector3D> pressure_gradient(int index);
+
+    std::vector<Vector3D> velocity_laplacian(int index);
+
     void buildFluidMesh();
 
+private:
+    double KERNEL_COEFF;
 };
 
 

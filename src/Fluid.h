@@ -14,7 +14,7 @@
 #define uniform(a, b)   (a + (double) (b - a) * std::rand() / RAND_MAX)
 
 struct FluidParameters {
-    FluidParameters() {};
+    FluidParameters() = default;
 
     FluidParameters(double density,
                     double rms_velocity,
@@ -22,7 +22,7 @@ struct FluidParameters {
                     double molar_mass)
             : density(density), rms_velocity(rms_velocity), average_distance(average_distance), molar_mass(molar_mass) {}
 
-    ~FluidParameters() {}
+    ~FluidParameters() = default;
 
     double density;             // kg/m^3
     double rms_velocity;        // m/s
@@ -36,7 +36,7 @@ public:
 
     Fluid(double length, double width, double height, int nParticles, FluidParameters params);
 
-    std::vector<PointMass> &get_position(const Vector3D &pos);
+    std::vector<PointMass> &get_position(const Vector3D &pos) const;
 
     void simulate(double frames_per_sec, double simulation_steps,
                   const std::vector<Vector3D> &external_accelerations);
@@ -53,14 +53,12 @@ public:
     std::vector<CollisionObject *> collisionObjects;
     FluidMesh *mesh;
 
-    double W(const PointMass &pi, const PointMass &pj);
-    Vector3D grad_W(const PointMass &pi, const PointMass &pj);
+    double W(const PointMass &pi, const PointMass &pj) const;
+    Vector3D grad_W(const PointMass &pi, const PointMass &pj) const;
 
-    std::vector<double> batch_density(int index);
-
-    std::vector<Vector3D> pressure_gradient(int index);
-
-    std::vector<Vector3D> velocity_laplacian(int index);
+    std::vector<double> batch_density(int index) const;
+    std::vector<Vector3D> batch_grad_pressure(int index) const;
+    std::vector<Vector3D> batch_laplacian_velocity(int index) const;
 
     void buildFluidMesh();
 

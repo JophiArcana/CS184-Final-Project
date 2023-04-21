@@ -42,10 +42,12 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
 
     // Mersenne twister PRNG, initialized with seed from previous random device instance
     std::mt19937 gen(random_device());
-    // std of water velocity is approx 642.50364 m/s
-    std::normal_distribution<float> norm_dist_gen(0, params.rms_velocity / std::pow(ratio, 1. / 6));
+    // std of water velocity is approx 642.50364 m/s, average velocity over #ratio particles
+    // negligible, may remove random sampling completely
+    std::normal_distribution<double> norm_dist_gen(0, params.rms_velocity / ratio);
     for (int i = 0; i < nParticles; i += 1) {
         // TODO: change LENGTH and WIDTH to G_LENGTH and G_WIDTH? (and HEIGHT to G_HEIGHT)?
+        // No this is fine, we use LENGTH for position in space, G_LENGTH is number of grid cells
         Vector3D position = Vector3D(uniform(0, LENGTH), uniform(0, WIDTH), uniform(0, 0.5 * HEIGHT));
         Vector3D velocity = Vector3D(norm_dist_gen(gen), norm_dist_gen(gen), norm_dist_gen(gen));
         PointMass pt = PointMass(position, velocity, false);
@@ -54,7 +56,7 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     }
 }
 
-std::vector<PointMass> &Fluid::get_position(const Vector3D &pos) {
+std::vector<PointMass> &Fluid::get_position(const Vector3D &pos) const {
     Vector3D indices = pos / (2 * this->SMOOTHING_RADIUS);
     return grid[(int) indices[2] + G_HEIGHT * ((int) indices[1] + G_WIDTH * (int) indices[0])];
 }
@@ -97,8 +99,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
     }
 
     /** handle collisions with objects **/
-    /** TODO: Should be G_LENGTH? **/
-    for (int index = 0; index < LENGTH * WIDTH * HEIGHT; index += 1) {
+    for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index += 1) {
         for (PointMass &pt: this->grid[index]) {
             for (CollisionObject *co: this->collisionObjects) {
                 co->collide(pt);
@@ -110,8 +111,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
     /** TODO: handle self collisions */
 
     /** update position **/
-    /** TODO: Should be G_LENGTH? **/
-    for (int index = 0; index < LENGTH * WIDTH * HEIGHT; index += 1) {
+    for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index += 1) {
         for (PointMass &pt: this->grid[index]) {
             pt.position = pt.position + pt.velocity * delta_t;
         }
@@ -120,7 +120,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
 
 /** Kernel function **/
 // If use Gaussian, I can definitely kernelize this for O(n) batch computation
-double Fluid::W(const PointMass &pi, const PointMass &pj) {
+double Fluid::W(const PointMass &pi, const PointMass &pj) const {
     double q = (pi.position - pj.position).norm() / this->SMOOTHING_RADIUS;
     double c = 0;
     if (q < 1) {
@@ -132,7 +132,7 @@ double Fluid::W(const PointMass &pi, const PointMass &pj) {
 }
 
 /** gradient of Kernel **/
-Vector3D Fluid::grad_W(const PointMass &pi, const PointMass &pj) {
+Vector3D Fluid::grad_W(const PointMass &pi, const PointMass &pj) const {
     Vector3D xji = pj.position - pi.position;
     double q = xji.norm() / this->SMOOTHING_RADIUS;
     double c = 0;
@@ -144,7 +144,7 @@ Vector3D Fluid::grad_W(const PointMass &pi, const PointMass &pj) {
     return (c * this->KERNEL_COEFF / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS)) * xji;
 }
 
-std::vector<double> Fluid::batch_density(int index) {
+std::vector<double> Fluid::batch_density(int index) const {
     const std::vector<PointMass> &cell = this->grid[index];
     size_t n = cell.size();
     std::vector<double> result(n);
@@ -161,15 +161,15 @@ std::vector<double> Fluid::batch_density(int index) {
     return result;
 }
 
-void Fluid::buildFluidMesh() {
-    /** TODO: implement mesh construction */
-}
-
-std::vector<Vector3D> batch_pressure_gradient(int index) {
+std::vector<Vector3D> Fluid::batch_grad_pressure(int index) const {
     std::vector<Vector3D> batch;
     for (PointMass &pt: this->grid[index]) {
         Vector3D v = Vector3D(0);
         for (int i = 0; i < )
     }
 
+}
+
+void Fluid::buildFluidMesh() {
+    /** TODO: implement mesh construction */
 }

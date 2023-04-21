@@ -17,11 +17,12 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
 
     this->SMOOTHING_RADIUS = params.average_distance * std::cbrt(ratio);
     this->PARTICLE_MASS = volume * params.density / nParticles;
-    this->KERNEL_COEFF = 3. / (2 * PI * std::pow(this->SMOOTHING_RADIUS, 3));
+    this->SELF_KERNEL = 1 / (PI * std::pow(this->SMOOTHING_RADIUS, 3));
+    this->KERNEL_COEFF = 1.5 * this->SELF_KERNEL;
 
-    this->G_LENGTH = (int) LENGTH / (2 * this->SMOOTHING_RADIUS);
-    this->G_WIDTH = (int) WIDTH / (2 * this->SMOOTHING_RADIUS);
-    this->G_HEIGHT = (int) HEIGHT / (2 * this->SMOOTHING_RADIUS);
+    this->G_LENGTH = (int) (LENGTH / (2 * this->SMOOTHING_RADIUS));
+    this->G_WIDTH = (int) (WIDTH / (2 * this->SMOOTHING_RADIUS));
+    this->G_HEIGHT = (int) (HEIGHT / (2 * this->SMOOTHING_RADIUS));
 
     grid = new std::vector<PointMass>[G_LENGTH * G_WIDTH * G_HEIGHT];
 
@@ -72,12 +73,6 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
         }
     }
 
-    for (int i = 0; i < this->G_LENGTH; i++) {
-        for (int j = 0; j < this->G_WIDTH; j++) {
-        for (int )
-        }
-    }
-
     /** intermolecular forces. this (commented-out) code
      * doesn't assume that neighboring boxes of size SMOOTHING_RADIUS do not affect each other **/
     /*
@@ -124,29 +119,46 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
 }
 
 /** Kernel function **/
-double Fluid::W(const PointMass &p, const PointMass &q) {
-    double k = (p.position - q.position).norm() / this->SMOOTHING_RADIUS;
+// If use Gaussian, I can definitely kernelize this for O(n) batch computation
+double Fluid::W(const PointMass &pi, const PointMass &pj) {
+    double q = (pi.position - pj.position).norm() / this->SMOOTHING_RADIUS;
     double c = 0;
-    if (k < 1) {
-        c = 2. / 3 + k * k * (k / 2 - 1);
-    } else if (k <= 2) {
-        c = std::pow(2 - k, 3) / 6;
+    if (q < 1) {
+        c = 2. / 3 + q * q * (q / 2 - 1);
+    } else if (q <= 2) {
+        c = std::pow(2 - q, 3) / 6;
     }
     return c * this->KERNEL_COEFF;
 }
 
 /** gradient of Kernel **/
-Vector3D Fluid::grad_W(const PointMass &p, const PointMass &q) {
-    double k = (p.position - q.position).norm() / this->SMOOTHING_RADIUS;
+Vector3D Fluid::grad_W(const PointMass &pi, const PointMass &pj) {
+    Vector3D xji = pj.position - pi.position;
+    double q = xji.norm() / this->SMOOTHING_RADIUS;
     double c = 0;
-    if (k < 1) {
-        c = 
+    if (q < 1) {
+        c = -2 + 1.5 * q;
+    } else if (q <= 2) {
+        c = -0.5 * q + 2 - 2 / q;
     }
+    return (c * this->KERNEL_COEFF / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS)) * xji;
 }
 
 std::vector<double> Fluid::batch_density(int index) {
     const std::vector<PointMass> &cell = this->grid[index];
-    std::vector<doubl
+    size_t n = cell.size();
+    std::vector<double> result(n);
+
+    for (int i = 0; i < n; i++) {
+        result[i] += this->SELF_KERNEL / 2;
+        for (int j = i + 1; j < n; j++) {
+            double w = this->W(cell[i], cell[j]);
+            result[i] += w;
+            result[j] += w;
+        }
+        result[i] *= (2 * this->PARTICLE_MASS);
+    }
+    return result;
 }
 
 void Fluid::buildFluidMesh() {

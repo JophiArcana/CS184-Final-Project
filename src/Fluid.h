@@ -53,9 +53,10 @@ public:
     std::vector<CollisionObject *> collisionObjects;
     FluidMesh *mesh;
 
-    double W(const PointMass &p, const PointMass &q);
+    double W(const PointMass &pi, const PointMass &pj);
+    Vector3D grad_W(const PointMass &pi, const PointMass &pj);
+
     std::vector<double> batch_density(int index);
-    std::vector<Vector3D> batch_kernel_gradient(int index);
 
     std::vector<Vector3D> pressure_gradient(int index);
 
@@ -65,6 +66,7 @@ public:
 
 private:
     double KERNEL_COEFF;
+    double SELF_KERNEL;
 };
 
 

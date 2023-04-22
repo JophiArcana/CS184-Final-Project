@@ -62,6 +62,7 @@ std::vector<PointMass> &Fluid::get_position(const Vector3D &pos) const {
 }
 
 void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vector<Vector3D> &external_accelerations) {
+    /** TODO: use lambda * h / vmax for timestep, lambda = 0.4, compute running vmax */
     double delta_t = 1.0f / frames_per_sec / simulation_steps;
 
     Vector3D total_external_force(0);

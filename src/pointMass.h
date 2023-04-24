@@ -13,7 +13,7 @@ class Halfedge;
 struct PointMass {
     PointMass(Vector3D position, Vector3D velocity, bool pinned)
             : pinned(pinned), start_position(position), position(position),
-              velocity(velocity) {}
+              velocity(velocity), acceleration(0) {}
 
     Vector3D normal();
 
@@ -28,7 +28,7 @@ struct PointMass {
     // dynamic values
     Vector3D position;
     Vector3D velocity;
-    Vector3D forces;
+    Vector3D acceleration;
 
     // mesh reference
     Halfedge *halfedge;

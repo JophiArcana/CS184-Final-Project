@@ -26,6 +26,8 @@ public:
 
     void loadFluid(Fluid *fluid);
 
+    void loadFluidParameters(FluidParameters *fp);
+
 //    void loadCloth(Cloth *cloth);
 //
 //    void loadClothParameters(ClothParameters *cp);
@@ -88,6 +90,7 @@ private:
     vector<CollisionObject *> *collision_objects;
 
     Fluid *fluid;
+    FluidParameters *fp;
 
     // OpenGL attributes
 

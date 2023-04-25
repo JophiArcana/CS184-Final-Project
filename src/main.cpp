@@ -23,7 +23,7 @@
 #include "clothSimulator.h"
 #include "json.hpp"
 #include "misc/file_utils.h"
-#include "fluid.h"
+#include "Fluid.h"
 
 typedef uint32_t gid_t;
 
@@ -39,7 +39,8 @@ const string PLANE = "plane";
 // const string CLOTH = "cloth";
 const string FLUID = "fluid";
 
-const unordered_set<string> VALID_KEYS = {SPHERE, PLANE, CLOTH};
+// const unordered_set<string> VALID_KEYS = {SPHERE, PLANE, CLOTH};
+const unordered_set<string> VALID_KEYS = {SPHERE, PLANE, FLUID};
 
 ClothSimulator *app = nullptr;
 GLFWwindow *window = nullptr;
@@ -492,6 +493,9 @@ int main(int argc, char **argv) {
     app = new ClothSimulator(project_root, screen);
     // app->loadCloth(&cloth);
     // app->loadClothParameters(&cp);
+    app->loadFluid(&fluid);
+    // TODO implement
+    app->loadFluidParameters(&fp);
     app->loadCollisionObjects(&objects);
     app->init();
 

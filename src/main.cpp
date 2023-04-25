@@ -19,10 +19,11 @@
 #include "CGL/CGL.h"
 #include "collision/plane.h"
 #include "collision/sphere.h"
-#include "cloth.h"
+// #include "cloth.h"
 #include "clothSimulator.h"
 #include "json.hpp"
 #include "misc/file_utils.h"
+#include "fluid.h"
 
 typedef uint32_t gid_t;
 
@@ -35,7 +36,8 @@ using json = nlohmann::json;
 
 const string SPHERE = "sphere";
 const string PLANE = "plane";
-const string CLOTH = "cloth";
+// const string CLOTH = "cloth";
+const string FLUID = "fluid";
 
 const unordered_set<string> VALID_KEYS = {SPHERE, PLANE, CLOTH};
 
@@ -160,7 +162,9 @@ void incompleteObjectError(const char *object, const char *attribute) {
     exit(-1);
 }
 
-bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vector<CollisionObject *> *objects,
+//bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vector<CollisionObject *> *objects,
+//                         int sphere_num_lat, int sphere_num_lon) {
+bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vector<CollisionObject *> *objects,
                          int sphere_num_lat, int sphere_num_lon) {
     // Read JSON from file
     ifstream i(filename);
@@ -185,9 +189,11 @@ bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vec
         json object = it.value();
 
         // Parse object depending on type (cloth, sphere, or plane)
-        if (key == CLOTH) {
-            // Cloth
+        // if (key == CLOTH) {
+        if (key == FLUID) {
+            // Fluid
             double width, height;
+            // TODO update this
             int num_width_points, num_height_points;
             float thickness;
             e_orientation orientation;
@@ -401,8 +407,10 @@ int main(int argc, char **argv) {
     std::string project_root;
     bool found_project_root = find_project_root(search_paths, project_root);
 
-    Cloth cloth;
-    ClothParameters cp;
+//    Cloth cloth;
+//    ClothParameters cp;
+    Fluid fluid;
+    FluidParameters fp;
     vector<CollisionObject *> objects;
 
     int c;

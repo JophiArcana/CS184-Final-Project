@@ -47,7 +47,7 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     // negligible, may remove random sampling completely
     std::normal_distribution<double> norm_dist_gen(0, params.rms_velocity / ratio);
     for (int i = 0; i < nParticles; i += 1) {
-        Vector3D position = Vector3D(uniform(0, LENGTH), uniform(0, WIDTH), uniform(0, 0.5 * HEIGHT));
+        Vector3D position = Vector3D(LENGTH * std::rand() / RAND_MAX, WIDTH * std::rand() / RAND_MAX, 0.5 * HEIGHT * std::rand() / RAND_MAX);
         Vector3D velocity = Vector3D(norm_dist_gen(gen), norm_dist_gen(gen), norm_dist_gen(gen));
 
         this->get_position(position).push_back(new PointMass(position, velocity, false));
@@ -67,7 +67,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
 
     /** Acceleration computation */
     double vmax = 0;
-    for (int index = 0; index < LENGTH * WIDTH * HEIGHT; index += 1) {
+    for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index += 1) {
         std::vector<std::vector<double>> W = this->batch_W(index);
         std::vector<std::vector<Vector3D>> unnormalized_grad_W = this->batch_unnormalized_grad_W(index);
 

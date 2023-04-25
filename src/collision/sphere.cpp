@@ -18,8 +18,8 @@ void Sphere::collide(PointMass &pm) {
 
     Vector3D tangentPointSphere = vec * this->radius / dist;
 
-    Vector3D correctionVec = tangentPointSphere + this->origin - pm.last_position;
-    pm.position = pm.last_position + (1 - this->friction) * correctionVec;
+    Vector3D correctionVec = tangentPointSphere + this->origin - pm.position;
+    pm.position = pm.position + (1 - this->friction) * correctionVec;
 }
 
 void Sphere::render(GLShader &shader) {

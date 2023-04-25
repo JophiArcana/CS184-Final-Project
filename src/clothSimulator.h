@@ -5,8 +5,9 @@
 #include <memory>
 
 #include "camera.h"
-#include "cloth.h"
+// #include "cloth.h"
 #include "collision/collisionObject.h"
+#include "Fluid.h"
 
 using namespace nanogui;
 

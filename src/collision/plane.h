@@ -3,8 +3,9 @@
 
 #include <nanogui/nanogui.h>
 
-#include "../clothMesh.h"
+// #include "../clothMesh.h"
 #include "collisionObject.h"
+#include "../FluidMesh.h"
 
 using namespace nanogui;
 using namespace CGL;

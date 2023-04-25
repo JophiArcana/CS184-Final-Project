@@ -1,9 +1,10 @@
 #ifndef COLLISIONOBJECT_SPHERE_H
 #define COLLISIONOBJECT_SPHERE_H
 
-#include "../clothMesh.h"
+// #include "../clothMesh.h"
 #include "../misc/sphere_drawing.h"
 #include "collisionObject.h"
+#include "../FluidMesh.h"
 
 using namespace CGL;
 using namespace std;

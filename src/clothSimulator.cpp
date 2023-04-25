@@ -7,7 +7,7 @@
 #include "clothSimulator.h"
 
 #include "camera.h"
-#include "cloth.h"
+// #include "cloth.h"
 #include "collision/plane.h"
 #include "collision/sphere.h"
 #include "misc/camera_info.h"
@@ -177,14 +177,14 @@ ClothSimulator::~ClothSimulator() {
     glDeleteTextures(1, &m_gl_texture_4);
     glDeleteTextures(1, &m_gl_cubemap_tex);
 
-    /if (cloth) delete cloth;
-    if (cp) delete cp;
+    // if (cloth) delete cloth;
+    // if (cp) delete cp;
     if (collision_objects) delete collision_objects;
 }
 
-void ClothSimulator::loadCloth(Cloth *cloth) { this->cloth = cloth; }
+// void ClothSimulator::loadCloth(Cloth *cloth) { this->cloth = cloth; }
 
-void ClothSimulator::loadClothParameters(ClothParameters *cp) { this->cp = cp; }
+// void ClothSimulator::loadClothParameters(ClothParameters *cp) { this->cp = cp; }
 
 void ClothSimulator::loadCollisionObjects(vector<CollisionObject *> *objects) { this->collision_objects = objects; }
 
@@ -210,9 +210,9 @@ void ClothSimulator::init() {
 
     Vector3D avg_pm_position(0, 0, 0);
 
-    for (auto &pm: cloth->point_masses) {
-        avg_pm_position += pm.position / cloth->point_masses.size();
-    }
+//    for (auto &pm: cloth->point_masses) {
+//        avg_pm_position += pm.position / cloth->point_masses.size();
+//    }
 
     CGL::Vector3D target(avg_pm_position.x, avg_pm_position.y / 2,
                          avg_pm_position.z);

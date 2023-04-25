@@ -11,7 +11,7 @@
 #include "FluidMesh.h"
 #include "CGL/CGL.h"
 
-#define uniform(a, b)   (a + (double) (b - a) * std::rand() / RAND_MAX)
+// #define uniform(a, b)   (a + (double) (b - a) * std::rand() / RAND_MAX)
 
 struct FluidParameters {
     FluidParameters() = default;

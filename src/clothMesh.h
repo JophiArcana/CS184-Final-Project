@@ -1,3 +1,5 @@
+
+
 #ifndef CLOTH_MESH_H
 #define CLOTH_MESH_H
 
@@ -5,10 +7,12 @@
 
 #include "CGL/CGL.h"
 #include "pointMass.h"
+#include "FluidMesh.h"
 
 using namespace CGL;
 using namespace std;
 
+/**
 class Triangle {
 public:
     Triangle(PointMass *pm1, PointMass *pm2, PointMass *pm3, Vector3D uv1, Vector3D uv2, Vector3D uv3)
@@ -42,6 +46,7 @@ public:
     Triangle *triangle;
     PointMass *pm;
 }; // struct Halfedge
+**/
 
 class ClothMesh {
 public:

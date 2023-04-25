@@ -1,7 +1,8 @@
 #include "iostream"
 #include <nanogui/nanogui.h>
 
-#include "../clothMesh.h"
+// #include "../clothMesh.h"
+#include "../FluidMesh.h"
 #include "../clothSimulator.h"
 #include "plane.h"
 

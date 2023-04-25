@@ -1,6 +1,7 @@
 #include <nanogui/nanogui.h>
 
-#include "../clothMesh.h"
+// #include "../clothMesh.h"
+#include "../FluidMesh.h"
 #include "../misc/sphere_drawing.h"
 #include "sphere.h"
 

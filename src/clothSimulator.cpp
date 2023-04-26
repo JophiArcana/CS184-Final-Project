@@ -222,7 +222,8 @@ void ClothSimulator::init() {
     CGL::Vector3D target(avg_pm_position.x, avg_pm_position.y / 2,
                          avg_pm_position.z);
     CGL::Vector3D c_dir(0., 0., 0.);
-    canonical_view_distance = max(cloth->width, cloth->height) * 0.9;
+    // canonical_view_distance = max(cloth->width, cloth->height) * 0.9;
+    canonical_view_distance = max(fluid->WIDTH, fluid->HEIGHT) * 0.9;
     scroll_rate = canonical_view_distance / 10;
 
     view_distance = canonical_view_distance * 2;
@@ -252,7 +253,8 @@ void ClothSimulator::drawContents() {
         vector<Vector3D> external_accelerations = {gravity};
 
         for (int i = 0; i < simulation_steps; i++) {
-            cloth->simulate(frames_per_sec, simulation_steps, cp, external_accelerations, collision_objects);
+            // cloth->simulate(frames_per_sec, simulation_steps, cp, external_accelerations, collision_objects);
+            fluid->simulate(frames_per_sec, simulation_steps, external_accelerations);
         }
     }
 
@@ -587,7 +589,8 @@ bool ClothSimulator::keyCallbackEvent(int key, int scancode, int action,
                 break;
             case 'r':
             case 'R':
-                cloth->reset();
+                // TODO fluid reset
+                // cloth->reset();
                 break;
             case ' ':
                 resetCamera();
@@ -638,7 +641,7 @@ void ClothSimulator::initGUI(Screen *screen) {
 
     new Label(window, "Spring types", "sans-bold");
 
-    {
+    /* {
         Button *b = new Button(window, "structural");
         b->setFlags(Button::ToggleButton);
         b->setPushed(cp->enable_structural_constraints);
@@ -659,7 +662,7 @@ void ClothSimulator::initGUI(Screen *screen) {
         b->setFontSize(14);
         b->setChangeCallback(
                 [this](bool state) { cp->enable_bending_constraints = state; });
-    }
+    } */
 
     // Mass-spring parameters
 
@@ -679,22 +682,22 @@ void ClothSimulator::initGUI(Screen *screen) {
         fb->setEditable(true);
         fb->setFixedSize(Vector2i(100, 20));
         fb->setFontSize(14);
-        fb->setValue(cp->density / 10);
+        fb->setValue(fp->density / 10);
         fb->setUnits("g/cm^2");
         fb->setSpinnable(true);
-        fb->setCallback([this](float value) { cp->density = (double) (value * 10); });
+        fb->setCallback([this](float value) { fp->density = (double) (value * 10); });
 
-        new Label(panel, "ks :", "sans-bold");
+        new Label(panel, "rms velocity :", "sans-bold");
 
         fb = new FloatBox<double>(panel);
         fb->setEditable(true);
         fb->setFixedSize(Vector2i(100, 20));
         fb->setFontSize(14);
-        fb->setValue(cp->ks);
-        fb->setUnits("N/m");
+        fb->setValue(fp->rms_velocity);
+        fb->setUnits("m/s");
         fb->setSpinnable(true);
         fb->setMinValue(0);
-        fb->setCallback([this](float value) { cp->ks = value; });
+        fb->setCallback([this](float value) { fp->rms_velocity = value; });
     }
 
     // Simulation constants
@@ -741,20 +744,21 @@ void ClothSimulator::initGUI(Screen *screen) {
                 new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 5));
 
         Slider *slider = new Slider(panel);
-        slider->setValue(cp->damping);
+        slider->setValue(fp->average_distance);
         slider->setFixedWidth(105);
 
         TextBox *percentage = new TextBox(panel);
         percentage->setFixedWidth(75);
-        percentage->setValue(to_string(cp->damping));
-        percentage->setUnits("%");
+        percentage->setValue(to_string(fp->average_distance));
+        percentage->setUnits("m");
         percentage->setFontSize(14);
 
         slider->setCallback([percentage](float value) {
             percentage->setValue(std::to_string(value));
         });
         slider->setFinalCallback([&](float value) {
-            cp->damping = (double) value;
+            // cp->damping = (double) value;
+            fp->average_distance = (double) value;
             // cout << "Final slider value: " << (int)(value * 100) << endl;
         });
     }

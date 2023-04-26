@@ -130,6 +130,20 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
         }
     }
 
+    std::vector<PointMass *> *ngrid = new std::vector<PointMass *>[G_LENGTH * G_WIDTH * G_HEIGHT];
+
+    for (int i = 0; i < G_LENGTH * G_WIDTH * G_HEIGHT; i += 1) {
+        for (PointMass *pm : grid[i]) {
+            Vector3D indices = pos / (2 * this->SMOOTHING_RADIUS);
+            int index = (int) indices[2] + G_HEIGHT * ((int) indices[1] + G_WIDTH * (int) indices[0]);
+            ngrid[index].push_back(pm);
+        }
+    }
+
+    std::vector<PointMass *> *oldgrid = grid;
+    grid = ngrid;
+    delete[] oldgrid;
+
 }
 
 

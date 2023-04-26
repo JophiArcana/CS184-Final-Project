@@ -493,7 +493,7 @@ int main(int argc, char **argv) {
 
 
     FluidParameters fp;
-    Fluid fluid(fp);
+    Fluid fluid(10, 10, 10, 100, fp);
     vector<CollisionObject *> objects;
 
     bool success = loadObjectsFromFile(file_to_load_from, &fluid, &fp, &objects, sphere_num_lat, sphere_num_lon);

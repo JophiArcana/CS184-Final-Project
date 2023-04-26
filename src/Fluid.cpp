@@ -10,7 +10,6 @@
 
 const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 3.0714285E8);
 
-
 Fluid::Fluid(double length, double width, double height, int nParticles, FluidParameters params) :
         LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles), PARAMS(params) {
     double volume = length * width * height;

@@ -28,7 +28,8 @@ struct PointMass {
     // dynamic values
     Vector3D position;
     Vector3D velocity;
-    Vector3D acceleration;
+    Vector3D forces;
+    Vector3D acceleration; // TODO: verify if unnecessary?
 
     // mesh reference
     Halfedge *halfedge;

@@ -193,55 +193,70 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
         // if (key == CLOTH) {
         if (key == FLUID) {
             // Fluid
-            double width, height;
+            double length, width, height;
             // TODO update this
-            int num_width_points, num_height_points;
-            float thickness;
+            int g_length, g_width, g_height;
+            int num_particles;
             e_orientation orientation;
-            vector<vector<int>> pinned;
+            // vector<vector<int>> pinned;
+
+            auto it_length = object.find("length");
+            if (it_length != object.end()) {
+                length = *it_length;
+            } else {
+                incompleteObjectError("cloth", "length");
+            }
 
             auto it_width = object.find("width");
             if (it_width != object.end()) {
                 width = *it_width;
             } else {
-                incompleteObjectError("cloth", "width");
+                incompleteObjectError("fluid", "width");
             }
+
 
             auto it_height = object.find("height");
             if (it_height != object.end()) {
                 height = *it_height;
             } else {
-                incompleteObjectError("cloth", "height");
+                incompleteObjectError("fluid", "height");
             }
 
-            auto it_num_width_points = object.find("num_width_points");
-            if (it_num_width_points != object.end()) {
-                num_width_points = *it_num_width_points;
+            auto it_g_length = object.find("g_length");
+            if (it_g_length != object.end()) {
+                g_length = *it_g_length;
             } else {
-                incompleteObjectError("cloth", "num_width_points");
+                incompleteObjectError("fluid", "g_length");
             }
 
-            auto it_num_height_points = object.find("num_height_points");
-            if (it_num_height_points != object.end()) {
-                num_height_points = *it_num_height_points;
+            auto it_g_width = object.find("g_width");
+            if (it_g_width != object.end()) {
+                g_width = *it_g_width;
             } else {
-                incompleteObjectError("cloth", "num_height_points");
+                incompleteObjectError("fluid", "g_width");
             }
 
-            auto it_thickness = object.find("thickness");
-            if (it_thickness != object.end()) {
-                thickness = *it_thickness;
+            auto it_g_height = object.find("g_length");
+            if (it_g_height != object.end()) {
+                g_height = *it_g_height;
             } else {
-                incompleteObjectError("cloth", "thickness");
+                incompleteObjectError("fluid", "g_height");
             }
-
+            /*
+            auto it_num_particles = object.find("num_particles");
+            if (it_num_particles != object.end()) {
+                num_particles = *it_num_particles;
+            } else {
+                incompleteObjectError("fluid", "num_particles");
+            }
+            */
             auto it_orientation = object.find("orientation");
             if (it_orientation != object.end()) {
                 orientation = *it_orientation;
             } else {
-                incompleteObjectError("cloth", "orientation");
+                incompleteObjectError("fluid", "orientation");
             }
-
+/*
             auto it_pinned = object.find("pinned");
             if (it_pinned != object.end()) {
                 vector<json> points = *it_pinned;
@@ -250,14 +265,17 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
                     pinned.push_back(point);
                 }
             }
-
-            cloth->width = width;
-            cloth->height = height;
-            cloth->num_width_points = num_width_points;
-            cloth->num_height_points = num_height_points;
-            cloth->thickness = thickness;
-            cloth->orientation = orientation;
-            cloth->pinned = pinned;
+*/
+            fluid->LENGTH = width;
+            fluid->WIDTH = width;
+            fluid->HEIGHT = height;
+            fluid->G_HEIGHT = g_height;
+            fluid->G_LENGTH = g_length;
+            fluid->G_WIDTH = g_width;
+            // fluid->num_height_points = num_height_points;
+            // cloth->thickness = thickness;
+            fluid->orientation = orientation;
+            // cloth->pinned = pinned;
 
             // Cloth parameters
             bool enable_structural_constraints, enable_shearing_constraints, enable_bending_constraints;
@@ -410,9 +428,7 @@ int main(int argc, char **argv) {
 
 //    Cloth cloth;
 //    ClothParameters cp;
-    Fluid fluid;
-    FluidParameters fp;
-    vector<CollisionObject *> objects;
+
 
     int c;
 
@@ -476,7 +492,12 @@ int main(int argc, char **argv) {
         file_to_load_from = def_fname.str();
     }
 
-    bool success = loadObjectsFromFile(file_to_load_from, &cloth, &cp, &objects, sphere_num_lat, sphere_num_lon);
+
+    FluidParameters fp;
+    Fluid fluid(fp);
+    vector<CollisionObject *> objects;
+
+    bool success = loadObjectsFromFile(file_to_load_from, &fluid, &fp, &objects, sphere_num_lat, sphere_num_lon);
     if (!success) {
         std::cout << "Warn: Unable to load from file: " << file_to_load_from << std::endl;
     }

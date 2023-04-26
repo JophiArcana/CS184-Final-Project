@@ -13,6 +13,10 @@
 
 // #define uniform(a, b)   (a + (double) (b - a) * std::rand() / RAND_MAX)
 
+enum e_orientation {
+    HORIZONTAL = 0, VERTICAL = 1
+};
+
 struct FluidParameters {
     FluidParameters() = default;
 
@@ -38,6 +42,10 @@ class Fluid {
 public:
     static const FluidParameters WATER;
 
+    Fluid();
+
+    Fluid(FluidParameters params);
+
     Fluid(double length, double width, double height, int nParticles, FluidParameters params);
 
     std::vector<PointMass *> &get_position(const Vector3D &pos) const;
@@ -47,12 +55,14 @@ public:
 
     std::vector<PointMass *> *grid;
 
-    const double LENGTH, WIDTH, HEIGHT;
+    // although length, etc. are constant through the simulation, not "const" to assign during creation
+    double LENGTH, WIDTH, HEIGHT;
     int G_LENGTH, G_WIDTH, G_HEIGHT;
-    const int NUM_PARTICLES;
-    const FluidParameters PARAMS;
+    int NUM_PARTICLES;
+    FluidParameters PARAMS;
     double SMOOTHING_RADIUS;
     double PARTICLE_MASS;
+
 
     std::vector<CollisionObject *> collisionObjects;
 
@@ -60,6 +70,7 @@ public:
     void buildFluidMesh();
 
     std::vector<double> timestamps;
+    e_orientation orientation;
 
     double W(PointMass *pi, PointMass *pj) const;
     Vector3D unnormalized_grad_W(PointMass *pi, PointMass *pj) const;

@@ -11,7 +11,7 @@ using namespace CGL;
 
 #define SURFACE_OFFSET 0.0001
 
-void Plane::collide(PointMass &pm) {
+void Plane::collide(PointMass &pm, double delta_t, double velocity) {
     // TODO (Part 3): Handle collisions with planes.
     if (dot(pm.position + pm.velocity * delta_t - this->point, this->normal) * dot(pm.position - this->point, this->normal) >= 0) {
         return; // no collision

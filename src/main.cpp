@@ -204,7 +204,7 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
             if (it_length != object.end()) {
                 length = *it_length;
             } else {
-                incompleteObjectError("cloth", "length");
+                incompleteObjectError("fluid", "length");
             }
 
             auto it_width = object.find("width");
@@ -222,26 +222,26 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
                 incompleteObjectError("fluid", "height");
             }
 
-            auto it_g_length = object.find("g_length");
-            if (it_g_length != object.end()) {
-                g_length = *it_g_length;
-            } else {
-                incompleteObjectError("fluid", "g_length");
-            }
-
-            auto it_g_width = object.find("g_width");
-            if (it_g_width != object.end()) {
-                g_width = *it_g_width;
-            } else {
-                incompleteObjectError("fluid", "g_width");
-            }
-
-            auto it_g_height = object.find("g_length");
-            if (it_g_height != object.end()) {
-                g_height = *it_g_height;
-            } else {
-                incompleteObjectError("fluid", "g_height");
-            }
+//            auto it_g_length = object.find("g_length");
+//            if (it_g_length != object.end()) {
+//                g_length = *it_g_length;
+//            } else {
+//                incompleteObjectError("fluid", "g_length");
+//            }
+//
+//            auto it_g_width = object.find("g_width");
+//            if (it_g_width != object.end()) {
+//                g_width = *it_g_width;
+//            } else {
+//                incompleteObjectError("fluid", "g_width");
+//            }
+//
+//            auto it_g_height = object.find("g_length");
+//            if (it_g_height != object.end()) {
+//                g_height = *it_g_height;
+//            } else {
+//                incompleteObjectError("fluid", "g_height");
+//            }
             /*
             auto it_num_particles = object.find("num_particles");
             if (it_num_particles != object.end()) {
@@ -250,12 +250,12 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
                 incompleteObjectError("fluid", "num_particles");
             }
             */
-            auto it_orientation = object.find("orientation");
-            if (it_orientation != object.end()) {
-                orientation = *it_orientation;
-            } else {
-                incompleteObjectError("fluid", "orientation");
-            }
+//            auto it_orientation = object.find("orientation");
+//            if (it_orientation != object.end()) {
+//                orientation = *it_orientation;
+//            } else {
+//                incompleteObjectError("fluid", "orientation");
+//            }
 /*
             auto it_pinned = object.find("pinned");
             if (it_pinned != object.end()) {
@@ -266,15 +266,15 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
                 }
             }
 */
-            fluid->LENGTH = width;
-            fluid->WIDTH = width;
-            fluid->HEIGHT = height;
-            fluid->G_HEIGHT = g_height;
-            fluid->G_LENGTH = g_length;
-            fluid->G_WIDTH = g_width;
+//            fluid->LENGTH = width;
+//            fluid->WIDTH = width;
+//            fluid->HEIGHT = height;
+//            fluid->G_HEIGHT = g_height;
+//            fluid->G_LENGTH = g_length;
+//            fluid->G_WIDTH = g_width;
             // fluid->num_height_points = num_height_points;
             // cloth->thickness = thickness;
-            fluid->orientation = orientation;
+            // fluid->orientation = orientation;
             // cloth->pinned = pinned;
 
             // Cloth parameters

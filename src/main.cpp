@@ -278,57 +278,56 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
             // cloth->pinned = pinned;
 
             // Cloth parameters
-            bool enable_structural_constraints, enable_shearing_constraints, enable_bending_constraints;
-            double damping, density, ks;
-
-            auto it_enable_structural = object.find("enable_structural");
-            if (it_enable_structural != object.end()) {
-                enable_structural_constraints = *it_enable_structural;
-            } else {
-                incompleteObjectError("cloth", "enable_structural");
-            }
-
-            auto it_enable_shearing = object.find("enable_shearing");
-            if (it_enable_shearing != object.end()) {
-                enable_shearing_constraints = *it_enable_shearing;
-            } else {
-                incompleteObjectError("cloth", "it_enable_shearing");
-            }
-
-            auto it_enable_bending = object.find("enable_bending");
-            if (it_enable_bending != object.end()) {
-                enable_bending_constraints = *it_enable_bending;
-            } else {
-                incompleteObjectError("cloth", "it_enable_bending");
-            }
-
-            auto it_damping = object.find("damping");
-            if (it_damping != object.end()) {
-                damping = *it_damping;
-            } else {
-                incompleteObjectError("cloth", "damping");
-            }
+            double density, rms_velocity, average_distance, molar_mass, kinematic_viscosity, tait_coefficient;
 
             auto it_density = object.find("density");
             if (it_density != object.end()) {
                 density = *it_density;
             } else {
-                incompleteObjectError("cloth", "density");
+                incompleteObjectError("fluid", "density");
             }
 
-            auto it_ks = object.find("ks");
-            if (it_ks != object.end()) {
-                ks = *it_ks;
+            auto it_rms_velocity = object.find("rms_velocity");
+            if (it_rms_velocity != object.end()) {
+                rms_velocity = *it_rms_velocity;
             } else {
-                incompleteObjectError("cloth", "ks");
+                incompleteObjectError("fluid", "rms_velocity");
             }
 
-            cp->enable_structural_constraints = enable_structural_constraints;
-            cp->enable_shearing_constraints = enable_shearing_constraints;
-            cp->enable_bending_constraints = enable_bending_constraints;
-            cp->density = density;
-            cp->damping = damping;
-            cp->ks = ks;
+            auto it_average_distance = object.find("average_distance");
+            if (it_average_distance != object.end()) {
+                average_distance = *it_average_distance;
+            } else {
+                incompleteObjectError("fluid", "average_distance");
+            }
+
+            auto it_molar_mass = object.find("molar_mass");
+            if (it_molar_mass != object.end()) {
+                molar_mass = *it_molar_mass;
+            } else {
+                incompleteObjectError("fluid", "molar_mass");
+            }
+
+            auto it_kinematic_viscosity = object.find("kinematic_viscosity");
+            if (it_kinematic_viscosity != object.end()) {
+                kinematic_viscosity = *it_kinematic_viscosity;
+            } else {
+                incompleteObjectError("fluid", "kinematic_viscosity");
+            }
+
+            auto it_tait_coefficient = object.find("tait_coefficient");
+            if (it_tait_coefficient != object.end()) {
+                tait_coefficient = *it_tait_coefficient;
+            } else {
+                incompleteObjectError("fluid", "tait_coefficient");
+            }
+
+            fp->density = density;
+            fp->rms_velocity = rms_velocity;
+            fp->average_distance = average_distance;
+            fp->molar_mass = molar_mass;
+            fp->kinematic_viscosity = kinematic_viscosity;
+            fp->tait_coefficient = tait_coefficient;
         } else if (key == SPHERE) {
             Vector3D origin;
             double radius, friction;
@@ -507,8 +506,7 @@ int main(int argc, char **argv) {
     createGLContexts();
 
     // Initialize the Cloth object
-    cloth.buildGrid();
-    cloth.buildClothMesh();
+    fluid.buildFluidMesh();
 
     // Initialize the ClothSimulator object
     app = new ClothSimulator(project_root, screen);

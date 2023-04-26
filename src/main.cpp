@@ -484,6 +484,8 @@ int main(int argc, char **argv) {
         std::cout << "Loading files starting from: " << project_root << std::endl;
     }
 
+    // std::cout << "hello there" << std::endl;
+
     if (!file_specified) { // No arguments, default initialization
         std::stringstream def_fname;
         def_fname << project_root;
@@ -491,9 +493,8 @@ int main(int argc, char **argv) {
         file_to_load_from = def_fname.str();
     }
 
-
     FluidParameters fp;
-    Fluid fluid(10, 10, 10, 100, fp);
+    Fluid fluid(0.1, 0.1, 0.1, 100000, fp);
     vector<CollisionObject *> objects;
 
     bool success = loadObjectsFromFile(file_to_load_from, &fluid, &fp, &objects, sphere_num_lat, sphere_num_lon);

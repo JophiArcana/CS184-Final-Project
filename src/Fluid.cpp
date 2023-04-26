@@ -12,6 +12,7 @@ const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9, 0.0180152
 
 Fluid::Fluid(double length, double width, double height, int nParticles, FluidParameters params) :
         LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles), PARAMS(params) {
+    params = WATER;
     double volume = length * width * height;
     double true_num_particles = volume * params.density * 6.022E23 / params.molar_mass;
     double ratio = true_num_particles / nParticles;
@@ -21,11 +22,12 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     this->SELF_KERNEL = 1 / (PI * std::pow(this->SMOOTHING_RADIUS, 3));
     this->KERNEL_COEFF = 1.5 * this->SELF_KERNEL;
 
-    this->G_LENGTH = (int) (LENGTH / (2 * this->SMOOTHING_RADIUS));
-    this->G_WIDTH = (int) (WIDTH / (2 * this->SMOOTHING_RADIUS));
-    this->G_HEIGHT = (int) (HEIGHT / (2 * this->SMOOTHING_RADIUS));
+    this->G_LENGTH = (int) (LENGTH / (2 * this->SMOOTHING_RADIUS)) + 1;
+    this->G_WIDTH = (int) (WIDTH / (2 * this->SMOOTHING_RADIUS)) + 1;
+    this->G_HEIGHT = (int) (HEIGHT / (2 * this->SMOOTHING_RADIUS)) + 1;
 
     this->grid = new std::vector<PointMass *>[G_LENGTH * G_WIDTH * G_HEIGHT];
+
 
     // make planes
     double wall_friction = 0.3;
@@ -45,12 +47,13 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     // std of water velocity is approx 642.50364 m/s, average velocity over #ratio particles
     // negligible, may remove random sampling completely
     std::normal_distribution<double> norm_dist_gen(0, params.rms_velocity / ratio);
+
     for (int i = 0; i < nParticles; i += 1) {
         Vector3D position = Vector3D(LENGTH * std::rand() / RAND_MAX, WIDTH * std::rand() / RAND_MAX, 0.5 * HEIGHT * std::rand() / RAND_MAX);
         Vector3D velocity = Vector3D(norm_dist_gen(gen), norm_dist_gen(gen), norm_dist_gen(gen));
-
         this->get_position(position).push_back(new PointMass(position, velocity, false));
     }
+
 }
 
 std::vector<PointMass *> &Fluid::get_position(const Vector3D &pos) const {

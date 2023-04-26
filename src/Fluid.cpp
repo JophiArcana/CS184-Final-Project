@@ -66,20 +66,24 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
     for (const Vector3D &acc: external_accelerations)
         total_external_acceleration += acc;
 
-
     /** Acceleration computation */
     double vmax = 0;
     for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index += 1) {
+        size_t n = this->grid[index].size();
+        if (n == 0) {
+            continue;
+        }
         std::vector<std::vector<double>> W = this->batch_W(index);
         std::vector<std::vector<Vector3D>> unnormalized_grad_W = this->batch_unnormalized_grad_W(index);
 
         std::vector<double> density = this->batch_density(W);
         std::vector<double> pressure = this->batch_pressure(density);
 
+
         std::vector<Vector3D> scaled_grad_pressure = this->batch_scaled_grad_pressure(pressure, density, unnormalized_grad_W);
         std::vector<Vector3D> scaled_laplacian_velocity = this->batch_scaled_laplacian_velocity(index, density, unnormalized_grad_W);
 
-        size_t n = this->grid[index].size();
+
         for (int i = 0; i < n; i++) {
             PointMass *pt = this->grid[index][i];
             pt->acceleration = -scaled_grad_pressure[i] + scaled_laplacian_velocity[i] + total_external_acceleration;
@@ -87,6 +91,8 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
             vmax = std::max(vmax, pt->velocity.norm());
         }
     }
+
+    cout << "computed accelerations" << endl;
 
     /** intermolecular forces. this (commented-out) code
      * doesn't assume that neighboring boxes of size SMOOTHING_RADIUS do not affect each other **/
@@ -123,6 +129,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
             }
         }
     }
+
 }
 
 
@@ -171,6 +178,7 @@ std::vector<std::vector<double>> Fluid::batch_W(int index) const {
     size_t n = cell.size();
     std::vector<std::vector<double>> result(n);
     for (int i = 0; i < n; i++) {
+        result[i] = std::vector<double>(n);
         for (int j = 0; j < i; j++) {
             result[i][j] = result[j][i];
         }
@@ -189,6 +197,7 @@ std::vector<std::vector<Vector3D>> Fluid::batch_unnormalized_grad_W(int index) c
     size_t n = cell.size();
     std::vector<std::vector<Vector3D>> result(n);
     for (int i = 0; i < n; i++) {
+        result[i] = std::vector<Vector3D>(n);
         for (int j = 0; j < i; j++) {
             result[i][j] = -result[j][i];
         }

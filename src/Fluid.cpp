@@ -87,12 +87,11 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
         for (int i = 0; i < n; i++) {
             PointMass *pt = this->grid[index][i];
             pt->acceleration = -scaled_grad_pressure[i] + scaled_laplacian_velocity[i] + total_external_acceleration;
-
+            cout << pt->acceleration << endl;
+            cout << -scaled_grad_pressure[i] << " " << scaled_laplacian_velocity[i] << " " << total_external_acceleration << endl;
             vmax = std::max(vmax, pt->velocity.norm());
         }
     }
-
-    cout << "computed accelerations" << endl;
 
     /** intermolecular forces. this (commented-out) code
      * doesn't assume that neighboring boxes of size SMOOTHING_RADIUS do not affect each other **/
@@ -112,6 +111,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
 
     /** Adaptive step integration **/
     double delta_t = 0.4 * this->SMOOTHING_RADIUS / vmax;
+    delta_t = min(delta_t, 0.01);
     this->timestamps.push_back((this->timestamps.empty()) ? 0 : (this->timestamps.back() + delta_t));
 
     for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index += 1) {
@@ -134,16 +134,24 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
 
     for (int i = 0; i < G_LENGTH * G_WIDTH * G_HEIGHT; i += 1) {
         for (PointMass *pm : grid[i]) {
-            Vector3D indices = pos / (2 * this->SMOOTHING_RADIUS);
+            Vector3D indices = pm->position / (2 * this->SMOOTHING_RADIUS);
+            cout << pm->position << " " << indices << endl;
             int index = (int) indices[2] + G_HEIGHT * ((int) indices[1] + G_WIDTH * (int) indices[0]);
+            cout << index << endl;
+            cout << (G_LENGTH * G_WIDTH * G_HEIGHT) << endl;
             ngrid[index].push_back(pm);
+            cout << "hi2" << endl;
         }
     }
 
-    std::vector<PointMass *> *oldgrid = grid;
-    grid = ngrid;
-    delete[] oldgrid;
+    cout << "oh" << endl;
 
+    // std::vector<PointMass *> *oldgrid = grid;
+    delete[] grid;
+    grid = ngrid;
+    // delete[] oldgrid;
+
+    cout << "max v: " << vmax << endl;
 }
 
 

@@ -25,8 +25,9 @@ struct FluidParameters {
                     double average_distance,
                     double molar_mass,
                     double kinematic_viscosity,
-                    double tait_coefficient)
-            : density(density), rms_velocity(rms_velocity), average_distance(average_distance), molar_mass(molar_mass), kinematic_viscosity(kinematic_viscosity), tait_coefficient(tait_coefficient) {}
+                    double tait_coefficient,
+                    double tait_gamma)
+            : density(density), rms_velocity(rms_velocity), average_distance(average_distance), molar_mass(molar_mass), kinematic_viscosity(kinematic_viscosity), tait_coefficient(tait_coefficient), tait_gamma(tait_gamma) {}
 
     ~FluidParameters() = default;
 
@@ -36,6 +37,7 @@ struct FluidParameters {
     double molar_mass;              // kg/mol
     double kinematic_viscosity;     // m^2/s
     double tait_coefficient;        // kg/ms^2
+    double tait_gamma;              // 1
 };
 
 class Fluid {

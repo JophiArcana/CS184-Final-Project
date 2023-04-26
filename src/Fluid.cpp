@@ -8,19 +8,19 @@
 #include "./collision/collisionObject.h"
 #include "./collision/plane.h"
 
-const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 3.0714285E8);
+const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 2.1510E9, 7);
 
 Fluid::Fluid(double length, double width, double height, int nParticles, FluidParameters params) :
-        LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles) {
+        LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles), PARAMS(params) {
     // params = WATER;
-    PARAMS = FluidParameters(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 3.0714285E8);
+    // PARAMS = FluidParameters(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 3.0714285E8, 6);
     double volume = length * width * height;
     double true_num_particles = volume * PARAMS.density * 6.022E23 / PARAMS.molar_mass;
     double ratio = true_num_particles / nParticles;
 
     this->SMOOTHING_RADIUS = PARAMS.average_distance * std::cbrt(ratio);
     this->PARTICLE_MASS = volume * PARAMS.density / nParticles;
-    this->SELF_KERNEL = 1 / (PI * std::pow(this->SMOOTHING_RADIUS, 3));
+    this->SELF_KERNEL = 1. / (PI * std::pow(this->SMOOTHING_RADIUS, 3));
     this->KERNEL_COEFF = 1.5 * this->SELF_KERNEL;
 
     this->G_LENGTH = (int) (LENGTH / (2 * this->SMOOTHING_RADIUS)) + 1;
@@ -92,7 +92,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
         for (int i = 0; i < n; i++) {
             PointMass *pt = this->grid[index][i];
             pt->acceleration = -scaled_grad_pressure[i] + scaled_laplacian_velocity[i] + total_external_acceleration;
-            cout << pt->acceleration << endl;
+            // cout << pt->acceleration << endl;
             cout << -scaled_grad_pressure[i] << " " << scaled_laplacian_velocity[i] << " " << total_external_acceleration << endl;
             vmax = std::max(vmax, pt->velocity.norm());
         }
@@ -159,7 +159,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
     cout << "max v: " << vmax << endl;
 }
 
-Z
+
 void Fluid::buildFluidMesh() {
     /** TODO: implement mesh construction */
 }
@@ -192,9 +192,9 @@ Vector3D Fluid::unnormalized_grad_W(PointMass *pi, PointMass *pj) const {
         } else if (q <= 2) {
             c = -0.5 * q + 2 - 2 / q;
         }
-        return c * xji;
         // Below is the normalized version. Constant factor taken out for efficiency
         // return (c * this->KERNEL_COEFF / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS)) * xji;
+        return c * xji;
     }
 }
 
@@ -260,7 +260,7 @@ std::vector<double> Fluid::batch_pressure(const std::vector<double> &density) co
     size_t n = density.size();
     std::vector<double> result(n);
     for (int i = 0; i < n; i++) {
-        result[i] = PARAMS.tait_coefficient * (std::pow(density[i] / PARAMS.density, 7) - 1);
+        result[i] = (PARAMS.tait_coefficient / PARAMS.tait_gamma) * (std::pow(density[i] / PARAMS.density, PARAMS.tait_gamma) - 1);
     }
     return result;
 }
@@ -271,15 +271,19 @@ std::vector<double> Fluid::batch_pressure(const std::vector<double> &density) co
 std::vector<Vector3D> Fluid::batch_scaled_grad_pressure(const std::vector<double> &pressure, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const {
     size_t n = pressure.size();
     double coeff = (this->KERNEL_COEFF * this->PARTICLE_MASS) / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
+    // cout << this->PARTICLE_MASS * std::pow(this->SMOOTHING_RADIUS, -4) * std::pow(this->PARAMS.density, -2) << endl;
     double normalized_pressure[n];
     for (int i = 0; i < n; i++) {
         normalized_pressure[i] = pressure[i] / (density[i] * density[i]);
+        // cout << pressure[i] << " " << density[i] << " " << normalized_pressure[i] << endl;
     }
 
     std::vector<Vector3D> result(n);
     for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++)
+        for (int j = 0; j < n; j++) {
+            // cout << unnormalized_grad_W[i][j] / this->SMOOTHING_RADIUS << endl;
             result[i] += (normalized_pressure[i] + normalized_pressure[j]) * unnormalized_grad_W[i][j];
+        }
         result[i] *= coeff;
     }
     return result;

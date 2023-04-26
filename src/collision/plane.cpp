@@ -11,17 +11,17 @@ using namespace CGL;
 
 #define SURFACE_OFFSET 0.0001
 
-void Plane::collide(PointMass &pm, double delta_t, double velocity) {
+void Plane::collide(PointMass &pm, double delta_t) {
     // TODO (Part 3): Handle collisions with planes.
-    if (dot(pm.position + pm.velocity * delta_t - this->point, this->normal) * dot(pm.position - this->point, this->normal) >= 0) {
+    if (dot(pm.position - pm.velocity * delta_t - this->point, this->normal) * dot(pm.position - this->point, this->normal) >= 0) {
         return; // no collision
     }
 
-    Vector3D vec = velocity * delta_t;
-    // dot(pm.last_position + t * vec, normal) = 0
+    Vector3D vec = pm.velocity * delta_t;
+    // dot(pm.position - t * vec, normal) = 0
     // dot product is linear
-    // dot(pm.last_position, normal) + t * dot(vec, normal) = 0
-    double t = - dot(pm.position, normal) / dot(vec, normal);
+    // dot(pm.position, normal) - t * dot(vec, normal) = 0
+    double t = dot(pm.position, normal) / dot(vec, normal);
 
     // calculating offset
     double currDistance = dot(pm.position - this->point, this->normal);
@@ -29,7 +29,7 @@ void Plane::collide(PointMass &pm, double delta_t, double velocity) {
 
     Vector3D correctionVector = t * vec * ratio;
 
-    pm.position = pm.position + correctionVector * (1 - friction);
+    pm.position = pm.position - correctionVector * (1 - friction);
 
     pm.velocity = pm.velocity - 2 * this->normal * pm.velocity;
 }

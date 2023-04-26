@@ -117,8 +117,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
     for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index += 1) {
         for (PointMass *pt: this->grid[index]) {
             for (CollisionObject *co: this->collisionObjects) {
-                co->collide(*pt, delta_t, pt->velocity);
-
+                co->collide(*pt, delta_t);
             }
         }
     }

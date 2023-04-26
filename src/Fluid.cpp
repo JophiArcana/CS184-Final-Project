@@ -11,20 +11,25 @@
 const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 3.0714285E8);
 
 Fluid::Fluid(double length, double width, double height, int nParticles, FluidParameters params) :
-        LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles), PARAMS(params) {
-    params = WATER;
+        LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles) {
+    // params = WATER;
+    PARAMS = FluidParameters(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 3.0714285E8);
     double volume = length * width * height;
-    double true_num_particles = volume * params.density * 6.022E23 / params.molar_mass;
+    double true_num_particles = volume * PARAMS.density * 6.022E23 / PARAMS.molar_mass;
     double ratio = true_num_particles / nParticles;
 
-    this->SMOOTHING_RADIUS = params.average_distance * std::cbrt(ratio);
-    this->PARTICLE_MASS = volume * params.density / nParticles;
+    this->SMOOTHING_RADIUS = PARAMS.average_distance * std::cbrt(ratio);
+    this->PARTICLE_MASS = volume * PARAMS.density / nParticles;
     this->SELF_KERNEL = 1 / (PI * std::pow(this->SMOOTHING_RADIUS, 3));
     this->KERNEL_COEFF = 1.5 * this->SELF_KERNEL;
 
     this->G_LENGTH = (int) (LENGTH / (2 * this->SMOOTHING_RADIUS)) + 1;
     this->G_WIDTH = (int) (WIDTH / (2 * this->SMOOTHING_RADIUS)) + 1;
     this->G_HEIGHT = (int) (HEIGHT / (2 * this->SMOOTHING_RADIUS)) + 1;
+
+    cout << this->SMOOTHING_RADIUS << endl;
+
+    cout << G_WIDTH << " " << G_LENGTH << " " << G_HEIGHT << endl;
 
     this->grid = new std::vector<PointMass *>[G_LENGTH * G_WIDTH * G_HEIGHT];
 
@@ -137,14 +142,14 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
             Vector3D indices = pm->position / (2 * this->SMOOTHING_RADIUS);
             cout << pm->position << " " << indices << endl;
             int index = (int) indices[2] + G_HEIGHT * ((int) indices[1] + G_WIDTH * (int) indices[0]);
-            cout << index << endl;
-            cout << (G_LENGTH * G_WIDTH * G_HEIGHT) << endl;
+            // cout << index << endl;
+            // cout << (G_LENGTH * G_WIDTH * G_HEIGHT) << endl;
             ngrid[index].push_back(pm);
-            cout << "hi2" << endl;
+            // cout << "hi2" << endl;
         }
     }
 
-    cout << "oh" << endl;
+    // cout << "oh" << endl;
 
     // std::vector<PointMass *> *oldgrid = grid;
     delete[] grid;
@@ -223,11 +228,20 @@ std::vector<std::vector<Vector3D>> Fluid::batch_unnormalized_grad_W(int index) c
         for (int j = 0; j < i; j++) {
             result[i][j] = -result[j][i];
         }
-        for (int j = i; j < n; j++) {
+        for (int j = i + 1; j < n; j++) {
             result[i][j] = this->unnormalized_grad_W(cell[i], cell[j]);
         }
         result[i][i] = {0};
     }
+//    if (1 < n && n < 5) {
+//        for (int i = 0; i < n ; i += 1) {
+//            for (int j = 0; j < n; j += 1) {
+//                cout << result[i][j] << " ";
+//            }
+//            cout << endl;
+//        }
+//        cout << endl;
+//    }
     return result;
 }
 
@@ -235,8 +249,9 @@ std::vector<std::vector<Vector3D>> Fluid::batch_unnormalized_grad_W(int index) c
 std::vector<double> Fluid::batch_density(const std::vector<std::vector<double>> &W) const {
     size_t n = W.size();
     std::vector<double> result(n);
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
         result[i] = this->PARTICLE_MASS * std::accumulate(W[i].begin(), W[i].end(), 0.);
+    }
     return result;
 }
 
@@ -244,8 +259,9 @@ std::vector<double> Fluid::batch_density(const std::vector<std::vector<double>> 
 std::vector<double> Fluid::batch_pressure(const std::vector<double> &density) const {
     size_t n = density.size();
     std::vector<double> result(n);
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
         result[i] = PARAMS.tait_coefficient * (std::pow(density[i] / PARAMS.density, 7) - 1);
+    }
     return result;
 }
 
@@ -255,10 +271,10 @@ std::vector<double> Fluid::batch_pressure(const std::vector<double> &density) co
 std::vector<Vector3D> Fluid::batch_scaled_grad_pressure(const std::vector<double> &pressure, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const {
     size_t n = pressure.size();
     double coeff = (this->KERNEL_COEFF * this->PARTICLE_MASS) / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
-
     double normalized_pressure[n];
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
         normalized_pressure[i] = pressure[i] / (density[i] * density[i]);
+    }
 
     std::vector<Vector3D> result(n);
     for (int i = 0; i < n; i++) {

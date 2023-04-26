@@ -8,7 +8,7 @@
 using namespace nanogui;
 using namespace CGL;
 
-void Sphere::collide(PointMass &pm) {
+void Sphere::collide(PointMass &pm, double delta_t) {
     // TODO (Part 3): Handle collisions with spheres.
 
     Vector3D vec = pm.position - this->origin;
@@ -18,9 +18,12 @@ void Sphere::collide(PointMass &pm) {
     }
 
     Vector3D tangentPointSphere = vec * this->radius / dist;
+    Vector3D normal = Vector3D(vec);
+    normal.normalize();
 
     Vector3D correctionVec = tangentPointSphere + this->origin - pm.position;
     pm.position = pm.position + (1 - this->friction) * correctionVec;
+    pm.velocity = pm.velocity - 2 * normal * pm.velocity;
 }
 
 void Sphere::render(GLShader &shader) {

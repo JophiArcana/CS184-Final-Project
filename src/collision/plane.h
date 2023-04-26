@@ -18,7 +18,7 @@ public:
 
     void render(GLShader &shader);
 
-    void collide(PointMass &pm);
+    void collide(PointMass &pm, double delta_t);
 
     Vector3D point;
     Vector3D normal;

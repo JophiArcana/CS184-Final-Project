@@ -1,0 +1,13 @@
+{
+  "fluid": {
+    "length": 0.1,
+    "width": 0.1,
+    "height": 0.1,
+    "density": 997,
+    "rms_velocity": 642.503643481,
+    "average_distance": 0.31E-9,
+    "molar_mass": 0.01801528,
+    "kinematic_viscosity": 1E-6,
+    "tait_coefficient": 3.0714285E8
+  }
+}

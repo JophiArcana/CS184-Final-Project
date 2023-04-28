@@ -4,6 +4,7 @@
 
 #include <numeric>
 #include <utility>
+#include <chrono>
 #include "Fluid.h"
 #include "./collision/collisionObject.h"
 #include "./collision/plane.h"
@@ -12,8 +13,6 @@ const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9, 0.0180152
 
 Fluid::Fluid(double length, double width, double height, int nParticles, FluidParameters params) :
         LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles), PARAMS(params) {
-    // params = WATER;
-    // PARAMS = FluidParameters(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 3.0714285E8, 6);
     double volume = length * width * height;
     double true_num_particles = volume * PARAMS.density * 6.022E23 / PARAMS.molar_mass;
     double ratio = true_num_particles / nParticles;
@@ -27,9 +26,7 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     this->G_WIDTH = (int) (WIDTH / (2 * this->SMOOTHING_RADIUS)) + 1;
     this->G_HEIGHT = (int) (HEIGHT / (2 * this->SMOOTHING_RADIUS)) + 1;
 
-    cout << this->SMOOTHING_RADIUS << endl;
-
-    cout << G_WIDTH << " " << G_LENGTH << " " << G_HEIGHT << endl;
+    cout << "Here " << PARAMS.molar_mass / (6.022E23 * PARAMS.density * std::pow(PARAMS.average_distance, 4)) << endl;
 
     this->grid = new std::vector<PointMass *>[G_LENGTH * G_WIDTH * G_HEIGHT];
 
@@ -67,11 +64,15 @@ std::vector<PointMass *> &Fluid::get_position(const Vector3D &pos) const {
 }
 
 void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vector<Vector3D> &external_accelerations) {
+
+    double start_t = (double) chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count() / 1000;
+
     Vector3D total_external_acceleration(0);
     for (const Vector3D &acc: external_accelerations)
         total_external_acceleration += acc;
 
     /** Acceleration computation */
+
     double vmax = 0;
     for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index += 1) {
         size_t n = this->grid[index].size();
@@ -93,7 +94,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
             PointMass *pt = this->grid[index][i];
             pt->acceleration = -scaled_grad_pressure[i] + scaled_laplacian_velocity[i] + total_external_acceleration;
             // cout << pt->acceleration << endl;
-            cout << -scaled_grad_pressure[i] << " " << scaled_laplacian_velocity[i] << " " << total_external_acceleration << endl;
+            // cout << -scaled_grad_pressure[i] << " " << scaled_laplacian_velocity[i] << " " << total_external_acceleration << endl;
             vmax = std::max(vmax, pt->velocity.norm());
         }
     }
@@ -116,7 +117,7 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
 
     /** Adaptive step integration **/
     double delta_t = 0.4 * this->SMOOTHING_RADIUS / vmax;
-    delta_t = min(delta_t, 0.01);
+    delta_t = min(delta_t, 0.001);
     this->timestamps.push_back((this->timestamps.empty()) ? 0 : (this->timestamps.back() + delta_t));
 
     for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index += 1) {
@@ -135,28 +136,23 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
         }
     }
 
-    std::vector<PointMass *> *ngrid = new std::vector<PointMass *>[G_LENGTH * G_WIDTH * G_HEIGHT];
+    /** std::vector<PointMass *> *ngrid = new std::vector<PointMass *>[G_LENGTH * G_WIDTH * G_HEIGHT];
 
     for (int i = 0; i < G_LENGTH * G_WIDTH * G_HEIGHT; i += 1) {
         for (PointMass *pm : grid[i]) {
             Vector3D indices = pm->position / (2 * this->SMOOTHING_RADIUS);
             cout << pm->position << " " << indices << endl;
             int index = (int) indices[2] + G_HEIGHT * ((int) indices[1] + G_WIDTH * (int) indices[0]);
-            // cout << index << endl;
-            // cout << (G_LENGTH * G_WIDTH * G_HEIGHT) << endl;
             ngrid[index].push_back(pm);
-            // cout << "hi2" << endl;
         }
     }
 
-    // cout << "oh" << endl;
-
-    // std::vector<PointMass *> *oldgrid = grid;
     delete[] grid;
-    grid = ngrid;
-    // delete[] oldgrid;
+    grid = ngrid; */
 
-    cout << "max v: " << vmax << endl;
+    // cout << "max v: " << vmax << endl;
+    double end_t = (double) chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count() / 1000;
+    // cout << end_t - start_t << endl;
 }
 
 
@@ -261,6 +257,7 @@ std::vector<double> Fluid::batch_pressure(const std::vector<double> &density) co
     std::vector<double> result(n);
     for (int i = 0; i < n; i++) {
         result[i] = (PARAMS.tait_coefficient / PARAMS.tait_gamma) * (std::pow(density[i] / PARAMS.density, PARAMS.tait_gamma) - 1);
+        // cout << result[i] << endl;
     }
     return result;
 }
@@ -271,17 +268,14 @@ std::vector<double> Fluid::batch_pressure(const std::vector<double> &density) co
 std::vector<Vector3D> Fluid::batch_scaled_grad_pressure(const std::vector<double> &pressure, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const {
     size_t n = pressure.size();
     double coeff = (this->KERNEL_COEFF * this->PARTICLE_MASS) / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
-    // cout << this->PARTICLE_MASS * std::pow(this->SMOOTHING_RADIUS, -4) * std::pow(this->PARAMS.density, -2) << endl;
     double normalized_pressure[n];
     for (int i = 0; i < n; i++) {
         normalized_pressure[i] = pressure[i] / (density[i] * density[i]);
-        // cout << pressure[i] << " " << density[i] << " " << normalized_pressure[i] << endl;
     }
 
     std::vector<Vector3D> result(n);
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            // cout << unnormalized_grad_W[i][j] / this->SMOOTHING_RADIUS << endl;
             result[i] += (normalized_pressure[i] + normalized_pressure[j]) * unnormalized_grad_W[i][j];
         }
         result[i] *= coeff;

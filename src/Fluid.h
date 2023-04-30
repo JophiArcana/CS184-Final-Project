@@ -6,6 +6,7 @@
 #define CLOTHSIM_FLUID_H
 
 #include <random>
+#include <deque>
 #include "pointMass.h"
 #include "./collision/collisionObject.h"
 #include "FluidMesh.h"
@@ -50,16 +51,16 @@ public:
 
     Fluid(double length, double width, double height, int nParticles, FluidParameters params);
 
-    std::vector<PointMass *> &get_position(const Vector3D &pos) const;
+    std::deque<PointMass *> &get_position(const Vector3D &pos) const;
 
     void simulate(double frames_per_sec, double simulation_steps,
                   const std::vector<Vector3D> &external_accelerations);
 
-    std::vector<PointMass *> *grid;
+    std::deque<PointMass *> *grid;
 
     // although length, etc. are constant through the simulation, not "const" to assign during creation
     double LENGTH, WIDTH, HEIGHT;
-    int G_LENGTH, G_WIDTH, G_HEIGHT;
+    int G_LENGTH, G_WIDTH, G_HEIGHT, G_BUFFER;
     int NUM_PARTICLES;
     FluidParameters PARAMS;
     double SMOOTHING_RADIUS;
@@ -79,6 +80,8 @@ public:
 
     std::vector<std::vector<double>> batch_W(int index) const;
     std::vector<std::vector<Vector3D>> batch_unnormalized_grad_W(int index) const;
+
+    std::vector<double> batch_lambda(const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const;
 
     std::vector<double> batch_density(const std::vector<std::vector<double>> &W) const;
     std::vector<double> batch_pressure(const std::vector<double> &density) const;

@@ -19,17 +19,19 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
 
     this->SMOOTHING_RADIUS = PARAMS.average_distance * std::cbrt(ratio);
     this->PARTICLE_MASS = volume * PARAMS.density / nParticles;
+
     this->SELF_KERNEL = 1. / (PI * std::pow(this->SMOOTHING_RADIUS, 3));
     this->KERNEL_COEFF = 1.5 * this->SELF_KERNEL;
+    this->SCORR_COEFF = -0.1 / std::pow(0.63 * this->KERNEL_COEFF, 4);
+    this->SELF_SCORR = this->SCORR_COEFF * std::pow(this->SELF_KERNEL, 4);
 
     this->G_LENGTH = (int) (LENGTH / (2 * this->SMOOTHING_RADIUS)) + 1;
     this->G_WIDTH = (int) (WIDTH / (2 * this->SMOOTHING_RADIUS)) + 1;
     this->G_HEIGHT = (int) (HEIGHT / (2 * this->SMOOTHING_RADIUS)) + 1;
-    this->G_BUFFER = max(max(this->G_LENGTH, this->G_WIDTH), this->G_HEIGHT) / 4;
 
     cout << "Here " << PARAMS.molar_mass / (6.022E23 * PARAMS.density * std::pow(PARAMS.average_distance, 4)) << endl;
 
-    this->grid = new std::deque<PointMass *>[(G_LENGTH + 2 * G_BUFFER) * (G_WIDTH + 2 * G_BUFFER) * (G_HEIGHT + 2 * G_BUFFER)];
+    this->grid = new std::deque<PointMass *>[G_LENGTH * G_WIDTH * G_HEIGHT];
 
 
     // make planes
@@ -52,7 +54,8 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     std::normal_distribution<double> norm_dist_gen(0, params.rms_velocity / ratio);
 
     for (int i = 0; i < nParticles; i += 1) {
-        Vector3D position = Vector3D(LENGTH * std::rand() / RAND_MAX, WIDTH * std::rand() / RAND_MAX, 0.5 * HEIGHT * std::rand() / RAND_MAX);
+        Vector3D position = Vector3D(LENGTH * std::rand() / RAND_MAX, WIDTH * std::rand() / RAND_MAX,
+                                     0.5 * HEIGHT * std::rand() / RAND_MAX);
         Vector3D velocity = Vector3D(norm_dist_gen(gen), norm_dist_gen(gen), norm_dist_gen(gen));
         this->get_position(position).push_back(new PointMass(position, velocity, false));
     }
@@ -61,35 +64,80 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
 
 std::deque<PointMass *> &Fluid::get_position(const Vector3D &pos) const {
     Vector3D indices = pos / (2 * this->SMOOTHING_RADIUS);
-    indices += Vector3D(G_BUFFER);
-    return grid[(int) indices[2] + (G_HEIGHT + 2 * G_BUFFER) * ((int) indices[1] + (G_WIDTH + 2 * G_BUFFER) * (int) indices[0])];
+    return grid[(int) indices[2] + G_HEIGHT * ((int) indices[1] + G_WIDTH * (int) indices[0])];
 }
 
 void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vector<Vector3D> &external_accelerations) {
     double delta_t = 1.0f / frames_per_sec / simulation_steps;
 
-    double start_t = (double) chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count() / 1000;
+    double start_t = (double) chrono::duration_cast<chrono::milliseconds>(
+            chrono::system_clock::now().time_since_epoch()).count() / 1000;
 
     Vector3D total_external_acceleration(0);
     for (const Vector3D &acc: external_accelerations)
         total_external_acceleration += acc;
 
     /** Predicted movement */
-    for (int h = G_BUFFER; h < G_HEIGHT + G_BUFFER; h++) {
-        for (int w = G_BUFFER; w < G_WIDTH + G_BUFFER; w++) {
-            for (int l = G_BUFFER; l < G_LENGTH + G_BUFFER; l++) {
-                std::deque<PointMass *> cell = this->grid[h + (G_HEIGHT + 2 * G_BUFFER) * (w + (G_WIDTH + 2 * G_BUFFER) * l)];
-                PointMass *pm;
-                while ((pm = cell.front())->stage) {
-                    cell.pop_front();
-                    pm->velocity += delta_t * total_external_acceleration;
-                    pm->tentative_position += delta_t * pm->velocity;
-                    pm->stage = false;
-                    this->get_position(pm->tentative_position).push_back(pm);
-                }
-            }
+    for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index++) {
+        std::deque<PointMass *> cell = this->grid[index];
+        PointMass *pm;
+        while ((pm = cell.front())->stage) {
+            cell.pop_front();
+            pm->velocity += delta_t * total_external_acceleration;
+            pm->tentative_position += delta_t * pm->velocity;
+            pm->collided = false;
+            pm->stage = false;
+
+            this->collision_update(pm, delta_t);
+            this->get_position(pm->tentative_position).push_back(pm);
         }
     }
+
+    /** Position updates */
+    double coeff = this->KERNEL_COEFF / (PARAMS.density * this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
+    bool stage = false;
+
+    int n_iter = 3; // Note: must be odd or will break
+    for (int _ = 0; _ < n_iter; _++) {
+        for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index++) {
+            std::deque<PointMass *> cell = this->grid[index];
+            size_t n = cell.size();
+
+            std::vector<std::vector<double>> W = this->batch_W(index);
+            std::vector<std::vector<Vector3D>> scaled_grad_W = this->batch_scaled_grad_W(index);
+            std::vector<double> density = this->batch_density(W);
+
+            std::vector<double> lambda = this->batch_lambda(density, scaled_grad_W);
+            std::vector<std::vector<double>> scorr = this->batch_scorr(W);
+
+            PointMass *pm;
+            int i = 0;
+            while ((pm = cell.front())->stage == stage) {
+                cell.pop_front();
+                Vector3D dp(0);
+                for (int j = 0; j < n; j++)
+                    dp += (lambda[i] + lambda[j] + scorr[i][j]) * scaled_grad_W[i][j];
+                pm->tentative_position += (coeff * dp);
+
+                this->collision_update(pm, delta_t);
+                this->get_position(pm->tentative_position).push_back(pm);
+
+                i++;
+            }
+        }
+        stage = ~stage;
+    }
+
+    /** Velocity updates */
+    for (int index = 0; index < G_LENGTH * G_WIDTH * G_HEIGHT; index++) {
+        for (PointMass *pm: this->grid[index]) {
+            if (!pm->collided)
+                pm->velocity = (pm->tentative_position - pm->position) / delta_t;
+            pm->position = pm->tentative_position;
+        }
+    }
+
+
 
 
 
@@ -102,21 +150,24 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
             continue;
         }
         std::vector<std::vector<double>> W = this->batch_W(index);
-        std::vector<std::vector<Vector3D>> unnormalized_grad_W = this->batch_unnormalized_grad_W(index);
+        std::vector<std::vector<Vector3D>> scaled_grad_W = this->batch_scaled_grad_W(index);
 
         std::vector<double> density = this->batch_density(W);
         std::vector<double> pressure = this->batch_pressure(density);
 
 
-        std::vector<Vector3D> scaled_grad_pressure = this->batch_scaled_grad_pressure(pressure, density, unnormalized_grad_W);
-        std::vector<Vector3D> scaled_laplacian_velocity = this->batch_scaled_laplacian_velocity(index, density, unnormalized_grad_W);
+        std::vector<Vector3D> scaled_grad_pressure = this->batch_scaled_grad_pressure(pressure, density,
+                                                                                      scaled_grad_W);
+        std::vector<Vector3D> scaled_laplacian_velocity = this->batch_scaled_laplacian_velocity(index, density,
+                                                                                                scaled_grad_W);
 
 
         for (int i = 0; i < n; i++) {
             PointMass *pt = this->grid[index][i];
             pt->acceleration = -scaled_grad_pressure[i] + scaled_laplacian_velocity[i] + total_external_acceleration;
             // cout << pt->acceleration << endl;
-            cout << -scaled_grad_pressure[i] << " " << scaled_laplacian_velocity[i] << " " << total_external_acceleration << endl;
+            cout << -scaled_grad_pressure[i] << " " << scaled_laplacian_velocity[i] << " "
+                 << total_external_acceleration << endl;
             vmax = std::max(vmax, pt->velocity.norm());
         }
     }
@@ -173,8 +224,17 @@ void Fluid::simulate(double frames_per_sec, double simulation_steps, const std::
     grid = ngrid; */
 
     // cout << "max v: " << vmax << endl;
-    double end_t = (double) chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count() / 1000;
+    double end_t = (double) chrono::duration_cast<chrono::milliseconds>(
+            chrono::system_clock::now().time_since_epoch()).count() / 1000;
     // cout << end_t - start_t << endl;
+}
+
+
+void Fluid::collision_update(PointMass *pm, double delta_t) {
+    /** TODO: update to use tentative position */
+    for (CollisionObject *co: this->collisionObjects) {
+        co->collide(*pm, delta_t);
+    }
 }
 
 
@@ -198,7 +258,7 @@ double Fluid::W(PointMass *pi, PointMass *pj) const {
 
 /** Note: all grad_W are scaled by a constant factor, so this scaling is saved for once all
  * vectors have been accumulated for efficiency. */
-Vector3D Fluid::unnormalized_grad_W(PointMass *pi, PointMass *pj) const {
+Vector3D Fluid::scaled_grad_W(PointMass *pi, PointMass *pj) const {
     Vector3D xij = pi->tentative_position - pj->tentative_position;
     double q = xij.norm() / this->SMOOTHING_RADIUS;
     if (q == 0) {
@@ -240,7 +300,7 @@ std::vector<std::vector<double>> Fluid::batch_W(int index) const {
 }
 
 
-std::vector<std::vector<Vector3D>> Fluid::batch_unnormalized_grad_W(int index) const {
+std::vector<std::vector<Vector3D>> Fluid::batch_scaled_grad_W(int index) const {
     const std::deque<PointMass *> &cell = this->grid[index];
 
     size_t n = cell.size();
@@ -253,30 +313,11 @@ std::vector<std::vector<Vector3D>> Fluid::batch_unnormalized_grad_W(int index) c
         }
         int j = i + 1;
         for (auto iter_j = std::next(iter_i); iter_j < cell.end(); iter_j++) {
-            result[i][j] = this->unnormalized_grad_W(*iter_i, *iter_j);
+            result[i][j] = this->scaled_grad_W(*iter_i, *iter_j);
             j++;
         }
         result[i][i] = {0};
         i++;
-    }
-    return result;
-}
-
-
-std::vector<double> Fluid::batch_lambda(const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const {
-    size_t n = density.size();
-    double coeff = (PARAMS.density * this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS) / (this->PARTICLE_MASS * this->KERNEL_COEFF);
-    coeff *= coeff;
-
-    std::vector<double> result(n);
-    for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            double norm2 = unnormalized_grad_W[i][j].norm2();
-            result[i] += norm2;
-            result[j] += norm2;
-        }
-        result[i] += std::accumulate(unnormalized_grad_W[i].begin(), unnormalized_grad_W[i].end(), Vector3D(0)).norm2();
-        result[i] = (coeff * (1 - density[i] / PARAMS.density)) / result[i];
     }
     return result;
 }
@@ -292,11 +333,47 @@ std::vector<double> Fluid::batch_density(const std::vector<std::vector<double>> 
 }
 
 
+std::vector<double> Fluid::batch_lambda(const std::vector<double> &density,
+                                        const std::vector<std::vector<Vector3D>> &scaled_grad_W) const {
+    size_t n = density.size();
+    double coeff = (PARAMS.density * this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS) /
+                   (this->PARTICLE_MASS * this->KERNEL_COEFF);
+    coeff *= coeff;
+
+    std::vector<double> result(n);
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            double norm2 = scaled_grad_W[i][j].norm2();
+            result[i] += norm2;
+            result[j] += norm2;
+        }
+        result[i] += std::accumulate(scaled_grad_W[i].begin(), scaled_grad_W[i].end(), Vector3D(0)).norm2();
+        result[i] = (coeff * (1 - density[i] / PARAMS.density)) / result[i];
+    }
+    return result;
+}
+
+
+std::vector<std::vector<double>> Fluid::batch_scorr(const std::vector<std::vector<double>> &W) const {
+    size_t n = W.size();
+    std::vector<std::vector<double>> result(n);
+    for (int i = 0; i < n; i++) {
+        result[i] = std::vector<double>(n);
+        for (int j = 0; j < i; j++) {
+            result[i][j] = result[j][i] = this->SCORR_COEFF * std::pow(W[i][j], 4);
+        }
+        result[i][i] = this->SELF_SCORR;
+    }
+    return result;
+}
+
+
 std::vector<double> Fluid::batch_pressure(const std::vector<double> &density) const {
     size_t n = density.size();
     std::vector<double> result(n);
     for (int i = 0; i < n; i++) {
-        result[i] = (PARAMS.tait_coefficient / PARAMS.tait_gamma) * (std::pow(density[i] / PARAMS.density, PARAMS.tait_gamma) - 1);
+        result[i] = (PARAMS.tait_coefficient / PARAMS.tait_gamma) *
+                    (std::pow(density[i] / PARAMS.density, PARAMS.tait_gamma) - 1);
         // cout << result[i] << endl;
     }
     return result;
@@ -305,7 +382,9 @@ std::vector<double> Fluid::batch_pressure(const std::vector<double> &density) co
 
 /** Note: gradient computation involves multiplying by density, while the force calculation involves dividing
  * so the operation is ignored for efficiency. */
-std::vector<Vector3D> Fluid::batch_scaled_grad_pressure(const std::vector<double> &pressure, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const {
+std::vector<Vector3D>
+Fluid::batch_scaled_grad_pressure(const std::vector<double> &pressure, const std::vector<double> &density,
+                                  const std::vector<std::vector<Vector3D>> &scaled_grad_W) const {
     size_t n = pressure.size();
     double coeff = (this->KERNEL_COEFF * this->PARTICLE_MASS) / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
     double normalized_pressure[n];
@@ -316,7 +395,7 @@ std::vector<Vector3D> Fluid::batch_scaled_grad_pressure(const std::vector<double
     std::vector<Vector3D> result(n);
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            result[i] += (normalized_pressure[i] + normalized_pressure[j]) * unnormalized_grad_W[i][j];
+            result[i] += (normalized_pressure[i] + normalized_pressure[j]) * scaled_grad_W[i][j];
         }
         result[i] *= coeff;
     }
@@ -326,10 +405,12 @@ std::vector<Vector3D> Fluid::batch_scaled_grad_pressure(const std::vector<double
 
 /** All resulting are scaled by the viscosity when making force calculations, so the scaling merged
  * to the coefficient for efficiency. */
-std::vector<Vector3D> Fluid::batch_scaled_laplacian_velocity(int index, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const {
+std::vector<Vector3D> Fluid::batch_scaled_laplacian_velocity(int index, const std::vector<double> &density,
+                                                             const std::vector<std::vector<Vector3D>> &scaled_grad_W) const {
     const std::vector<PointMass *> &cell = this->grid[index];
     size_t n = cell.size();
-    double coeff = (2 * PARAMS.kinematic_viscosity * this->KERNEL_COEFF * this->PARTICLE_MASS) / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
+    double coeff = (2 * PARAMS.kinematic_viscosity * this->KERNEL_COEFF * this->PARTICLE_MASS) /
+                   (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
     double eps = 0.01 * this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS;
 
     std::vector<Vector3D> result(n);
@@ -337,7 +418,7 @@ std::vector<Vector3D> Fluid::batch_scaled_laplacian_velocity(int index, const st
         for (int j = 0; j < n; j++) {
             Vector3D xij = cell[i]->position - cell[j]->position;
             Vector3D vij = cell[i]->velocity - cell[j]->velocity;
-            result[i] += (dot(xij, unnormalized_grad_W[i][j]) / (density[j] * (xij.norm2() + eps))) * vij;
+            result[i] += (dot(xij, scaled_grad_W[i][j]) / (density[j] * (xij.norm2() + eps))) * vij;
         }
         result[i] *= coeff;
     }

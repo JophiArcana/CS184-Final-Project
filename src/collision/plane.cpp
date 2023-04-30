@@ -10,28 +10,37 @@ using namespace std;
 using namespace CGL;
 
 #define SURFACE_OFFSET 0.0001
+#define DAMPING 0.7
 
 void Plane::collide(PointMass &pm, double delta_t) {
     // TODO (Part 3): Handle collisions with planes.
-    if (dot(pm.position - pm.velocity * delta_t - this->point, this->normal) * dot(pm.position - this->point, this->normal) >= 0) {
-        return; // no collision
+    double d = dot(pm.tentative_position - this->point, this->normal);
+    if (d <= 0) {
+        double vd = dot(pm.velocity, this->normal);
+
+        double crossover_t = d / vd;
+        Vector3D collision_position = pm.tentative_position - crossover_t * pm.velocity;
+
+        pm.velocity = DAMPING * ((2 * vd) * this->normal + pm.velocity);
+        pm.tentative_position = collision_position + crossover_t * pm.velocity;
+        pm.collided = true;
+
+        /** Vector3D vec = pm.velocity * delta_t;
+        // dot(pm.position - t * vec, normal) = 0
+        // dot product is linear
+        // dot(pm.position, normal) - t * dot(vec, normal) = 0
+        double t = dot(pm.position, normal) / dot(vec, normal);
+
+        // calculating offset
+        double currDistance = dot(pm.position - this->point, this->normal);
+        double ratio = (currDistance - SURFACE_OFFSET) / currDistance;
+
+        Vector3D correctionVector = t * vec * ratio;
+
+        pm.position = pm.position - correctionVector * (1 - friction);
+
+        pm.velocity = pm.velocity - 2 * this->normal * pm.velocity; */
     }
-
-    Vector3D vec = pm.velocity * delta_t;
-    // dot(pm.position - t * vec, normal) = 0
-    // dot product is linear
-    // dot(pm.position, normal) - t * dot(vec, normal) = 0
-    double t = dot(pm.position, normal) / dot(vec, normal);
-
-    // calculating offset
-    double currDistance = dot(pm.position - this->point, this->normal);
-    double ratio = (currDistance - SURFACE_OFFSET) / currDistance;
-
-    Vector3D correctionVector = t * vec * ratio;
-
-    pm.position = pm.position - correctionVector * (1 - friction);
-
-    pm.velocity = pm.velocity - 2 * this->normal * pm.velocity;
 }
 
 void Plane::render(GLShader &shader) {

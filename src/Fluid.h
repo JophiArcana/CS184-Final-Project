@@ -55,12 +55,13 @@ public:
 
     void simulate(double frames_per_sec, double simulation_steps,
                   const std::vector<Vector3D> &external_accelerations);
+    void collision_update(PointMass *pm, double delta_t);
 
     std::deque<PointMass *> *grid;
 
     // although length, etc. are constant through the simulation, not "const" to assign during creation
     double LENGTH, WIDTH, HEIGHT;
-    int G_LENGTH, G_WIDTH, G_HEIGHT, G_BUFFER;
+    int G_LENGTH, G_WIDTH, G_HEIGHT;
     int NUM_PARTICLES;
     FluidParameters PARAMS;
     double SMOOTHING_RADIUS;
@@ -76,21 +77,25 @@ public:
     e_orientation orientation;
 
     double W(PointMass *pi, PointMass *pj) const;
-    Vector3D unnormalized_grad_W(PointMass *pi, PointMass *pj) const;
+    Vector3D scaled_grad_W(PointMass *pi, PointMass *pj) const;
 
     std::vector<std::vector<double>> batch_W(int index) const;
-    std::vector<std::vector<Vector3D>> batch_unnormalized_grad_W(int index) const;
-
-    std::vector<double> batch_lambda(const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const;
+    std::vector<std::vector<Vector3D>> batch_scaled_grad_W(int index) const;
 
     std::vector<double> batch_density(const std::vector<std::vector<double>> &W) const;
+
+    std::vector<double> batch_lambda(const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &scaled_grad_W) const;
+    std::vector<std::vector<double>> batch_scorr(const std::vector<std::vector<double>> &W) const;
+
     std::vector<double> batch_pressure(const std::vector<double> &density) const;
-    std::vector<Vector3D> batch_scaled_grad_pressure(const std::vector<double> &pressure, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const;
-    std::vector<Vector3D> batch_scaled_laplacian_velocity(int index, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &unnormalized_grad_W) const;
+    std::vector<Vector3D> batch_scaled_grad_pressure(const std::vector<double> &pressure, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &scaled_grad_W) const;
+    std::vector<Vector3D> batch_scaled_laplacian_velocity(int index, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &scaled_grad_W) const;
 
 private:
     double KERNEL_COEFF;
     double SELF_KERNEL;
+    double SCORR_COEFF;
+    double SELF_SCORR;
 };
 
 

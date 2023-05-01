@@ -51,17 +51,22 @@ public:
 
     Fluid(double length, double width, double height, int nParticles, FluidParameters params);
 
-    std::deque<PointMass *> &get_position(const Vector3D &pos) const;
+    std::vector<PointMass *> *grid() const;
+    int get_index(const Vector3D &pos) const;
+    std::vector<PointMass *> &get_cell(const Vector3D &pos) const;
 
     void simulate(double frames_per_sec, double simulation_steps,
                   const std::vector<Vector3D> &external_accelerations);
     void collision_update(PointMass *pm, double delta_t);
+    void cell_update();
 
-    std::deque<PointMass *> *grid;
+    std::vector<PointMass *> *grid1, *grid2;
+    bool grid_toggle;
 
     // although length, etc. are constant through the simulation, not "const" to assign during creation
     double LENGTH, WIDTH, HEIGHT;
-    int G_LENGTH, G_WIDTH, G_HEIGHT;
+    double CELL_SIZE;
+    int G_LENGTH, G_WIDTH, G_HEIGHT, G_SIZE;
     int NUM_PARTICLES;
     FluidParameters PARAMS;
     double SMOOTHING_RADIUS;

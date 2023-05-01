@@ -10,20 +10,32 @@ using namespace std;
 using namespace CGL;
 
 #define SURFACE_OFFSET 0.0001
-#define DAMPING 0.7
+#define DAMPING 0.3
 
 void Plane::collide(PointMass &pm, double delta_t) {
     // TODO (Part 3): Handle collisions with planes.
     double d = dot(pm.tentative_position - this->point, this->normal);
     if (d <= 0) {
+        pm.velocity = (pm.tentative_position - pm.position) / delta_t;
+        // cout << "Plane normal " << this->normal << endl;
+        // cout << "Pre-collision position " << pm.tentative_position << endl;
         double vd = dot(pm.velocity, this->normal);
 
         double crossover_t = d / vd;
         Vector3D collision_position = pm.tentative_position - crossover_t * pm.velocity;
 
-        pm.velocity = DAMPING * ((2 * vd) * this->normal + pm.velocity);
+        // cout << "Pre-collision velocity " << pm.velocity << endl;
+        double old_v = pm.velocity.norm();
+        pm.velocity = DAMPING * ((-2 * vd) * this->normal + pm.velocity);
+        if (pm.velocity.norm() > old_v) {
+            cout << "Velocity ratio: " << pm.velocity.norm() / old_v << endl;
+            throw std::runtime_error("Collision out velocity exceeded old velocity");
+        }
+        // cout << "\tPost-collision velocity " << pm.velocity << endl;
         pm.tentative_position = collision_position + crossover_t * pm.velocity;
         pm.collided = true;
+
+        // cout << "\tPost-collision position " << pm.tentative_position << endl;
 
         /** Vector3D vec = pm.velocity * delta_t;
         // dot(pm.position - t * vec, normal) = 0

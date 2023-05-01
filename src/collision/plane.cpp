@@ -25,12 +25,12 @@ void Plane::collide(PointMass &pm, double delta_t) {
         Vector3D collision_position = pm.tentative_position - crossover_t * pm.velocity;
 
         // cout << "Pre-collision velocity " << pm.velocity << endl;
-        double old_v = pm.velocity.norm();
+        Vector3D old_v = pm.velocity;
         pm.velocity = DAMPING * ((-2 * vd) * this->normal + pm.velocity);
-        if (pm.velocity.norm() > old_v) {
-            cout << "Velocity ratio: " << pm.velocity.norm() / old_v << endl;
-            throw std::runtime_error("Collision out velocity exceeded old velocity");
-        }
+//        if (pm.velocity[2] > 10) {
+//            cout << "old velocity: " << old_v << endl;
+//            throw std::runtime_error("Collision out velocity exceeded old velocity");
+//        }
         // cout << "\tPost-collision velocity " << pm.velocity << endl;
         pm.tentative_position = collision_position + SURFACE_OFFSET * this->normal;
         pm.collided = true;

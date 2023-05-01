@@ -10,7 +10,7 @@
 #include "./collision/plane.h"
 
 #define RELAXATION_EPS 0.001
-#define VORTICITY_EPS 0.1
+#define VORTICITY_EPS 0.001
 
 int PointMass::ID_NUM = 0;
 
@@ -30,7 +30,7 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     this->SCORR_COEFF = -0.001 / std::pow(0.65 * this->KERNEL_COEFF, 4);
     this->SELF_SCORR = this->SCORR_COEFF * std::pow(this->SELF_KERNEL, 4);
 
-    this->CELL_SIZE = (2. / std::sqrt(3) - EPS_D) * this->SMOOTHING_RADIUS;
+    this->CELL_SIZE = 2. * this->SMOOTHING_RADIUS;
     this->G_LENGTH = (int) (LENGTH / CELL_SIZE) + 1;
     this->G_WIDTH = (int) (WIDTH / CELL_SIZE) + 1;
     this->G_HEIGHT = (int) (3 * HEIGHT / CELL_SIZE);
@@ -128,8 +128,10 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
 //            if (pm->velocity.norm2() > vmax.norm2())
 //                vmax = pm->velocity;
             // cout << "Movement: " << pm->tentative_position << " " << pm->velocity << endl;
-//            if (isnan(pm->tentative_position[0]) || isnan(pm->velocity[0]))
-//                throw std::runtime_error("Movement prediction resulted in NaN position or velocity");
+//            if (pm->velocity[2] > 10)
+//                throw std::runtime_error("Movement prediction resulted in high velocity");
+            if (isnan(pm->tentative_position[0]) || isnan(pm->velocity[0]))
+                throw std::runtime_error("Movement prediction resulted in NaN position or velocity");
             this->collision_update(pm, delta_t);
         }
     }
@@ -139,90 +141,27 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     // cout << "Movement prediction done" << endl;
 
     /** Position updates */
-    double coeff = this->KERNEL_COEFF / (PARAMS.density * this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
-
-    int n_iter = 3; // Note: must be odd or will break
-    for (int _ = 0; _ < n_iter; _++) {
-        for (int index = 0; index < G_SIZE; index++) {
-            // cout << index << " of " << G_SIZE << endl;
-            const std::vector<PointMass *> &cell = this->grid()[index];
-            if (cell.size() > 1) {
-                size_t n = cell.size();
-
-                std::vector<int> neighbor_indices = this->neighbor_indices(index);
-
-                std::vector<std::vector<double>> W = this->batch_W(index, neighbor_indices);
-                std::vector<std::vector<Vector3D>> scaled_grad_W = this->batch_scaled_grad_W(index, neighbor_indices);
-                std::vector<double> density = this->batch_density(W);
-
-                std::vector<double> lambda = this->batch_lambda(density, scaled_grad_W);
-                std::vector<std::vector<double>> scorr = this->batch_scorr(W);
-
-                for (int i = 0; i < n; i++) {
-                    PointMass *pm = cell[i];
-//                    if (pm->velocity.norm2() > vmax.norm2())
-//                        vmax = pm->velocity;
-                    Vector3D dp(0);
-                    for (int j = 0; j < n; j++) {
-                        dp += (this->PARTICLE_MASS * (lambda[i] + lambda[j]) + scorr[i][j]) * scaled_grad_W[i][j];
-                    }
-//                    if (coeff * dp.norm() > 5) {
-//                        Vector3D fake_dp(0);
-//                        for (int j = 0; j < n; j++) {
-//                            fake_dp += (this->PARTICLE_MASS * (lambda[i] + lambda[j])) * scaled_grad_W[i][j];
-//                        }
-//                        cout << "lambda only dp " << coeff * fake_dp << endl;
-//
-//                        cout << "Change: " << coeff * dp << endl;
-//                        cout << "Particle mass " << PARTICLE_MASS << endl;
-//                        cout << "Smoothing radius " << SMOOTHING_RADIUS << endl;
-//                        cout << "Kernel coefficient " << KERNEL_COEFF << endl;
-//                        for (int k = 0; k < n; k++) {
-//                            cout << "density " << k << ": " << density[k] << endl;
-//                            cout << "lambda " << k << ": " << lambda[k] << endl;
-//                            for (int j = 0; j <= k; j++) {
-//                                cout << "\tlambda: " << (PARTICLE_MASS * (lambda[k] + lambda[j])) << ", scorr: " << scorr[k][j] << endl;
-//                                // cout << "\t" << cell[k]->tentative_position << ", " << cell[j]->tentative_position << " -> " << W[k][j] << endl;
-//                                cout << "\tSGW " << k << ", " << j << ": " << (KERNEL_COEFF / (PARAMS.density * SMOOTHING_RADIUS * SMOOTHING_RADIUS)) * scaled_grad_W[k][j] << endl;
-//                            }
-//                        }
-//                        cout << "Position change " << (coeff * dp) << endl;
-//                        throw std::runtime_error("Position adjustment too large");
-//                    }
-                    pm->tentative_position += (coeff * dp);
-//                    if (isnan(pm->tentative_position[0]) || isnan(pm->velocity[0])) {
-//                        throw std::runtime_error("Position adjustment resulted in NaN position or velocity");
-//                    }
-//                    cout << "Adjustment: " << pm->tentative_position << " " << pm->velocity << endl;
-
-                    this->collision_update(pm, delta_t);
-                }
-            }
-            // cout << index << " of " << G_SIZE << endl;
-        }
-//        cout << "Max adjustment " << coeff * max_position_change << endl;
-//        cout << this->PARTICLE_MASS << endl;
-//        cout << "Adjustment vmax " << vmax << endl;
-        this->cell_update();
-    }
+    this->incompressibility_adjustment(3, delta_t);
     // cout << "Position updates done" << endl;
 
     /** Velocity updates */
-//    vmax = Vector3D(0);
     std::vector<std::vector<int>> global_neighbor_indices(G_SIZE);
     std::vector<std::vector<std::vector<double>>> global_W(G_SIZE);
     std::vector<std::vector<std::vector<Vector3D>>> global_scaled_grad_W(G_SIZE);
     std::vector<std::vector<double>> global_density(G_SIZE);
     for (int index = 0; index < G_SIZE; index++) {
         for (PointMass *pm: this->grid()[index]) {
+            Vector3D prev = pm->velocity;
             if (!pm->collided)
                 pm->velocity = (pm->tentative_position - pm->position) / delta_t;
             pm->position = pm->tentative_position;
-//            if (isnan(pm->tentative_position[0]) || isnan(pm->velocity[0]))
-//                throw std::runtime_error("Velocity update resulted in NaN position or velocity");
+//            if (pm->velocity[2] > 10) {
+//                cout << prev << endl;
+//                throw std::runtime_error("Position adjustment/velocity update resulted in high velocity");
+//            }
+            if (isnan(pm->tentative_position[0]) || isnan(pm->velocity[0]))
+                throw std::runtime_error("Velocity update resulted in NaN position or velocity");
             // cout << "Final: " << pm->position << " " << pm->velocity << endl;
-//            if (pm->velocity.norm2() > vmax.norm2())
-//                vmax = pm->velocity;
 
             global_neighbor_indices[index] = this->neighbor_indices(index);
             global_W[index] = this->batch_W(index, global_neighbor_indices[index]);
@@ -241,18 +180,21 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
                     global_curl_velocity[index][i].norm() / (global_density[index][i] * global_density[index][i]);
         }
     }
-    std::vector<std::vector<Vector3D>> global_grad_norm_curl_velocity = this->global_scaled_grad_norm_curl_velocity(
-            global_neighbor_indices, global_density, global_normalized_curl_velocity_norm, global_scaled_grad_W);
+    std::vector<std::vector<Vector3D>> global_normalized_grad_norm_curl_velocity = this->global_normalized_grad_norm_curl_velocity(
+            global_neighbor_indices, global_normalized_curl_velocity_norm, global_scaled_grad_W);
 
     double max_vorticity_acc = 0;
     for (int index = 0; index < G_SIZE; index++) {
         const std::vector<PointMass *> &cell = this->grid()[index];
         size_t n = cell.size();
         for (int i = 0; i < n; i++) {
-            Vector3D vorticity_acc = VORTICITY_EPS * cross(global_grad_norm_curl_velocity[index][i], global_curl_velocity[index][i]);
-            // max_vorticity_acc = max(max_vorticity_acc, vorticity_acc.norm());
+            Vector3D vorticity_acc = VORTICITY_EPS * cross(global_normalized_grad_norm_curl_velocity[index][i],
+                                                           global_curl_velocity[index][i]);
+            max_vorticity_acc = max(max_vorticity_acc, vorticity_acc.norm());
             // cout << vorticity_acc << endl;
-            // cell[i]->velocity += delta_t * vorticity_acc;
+            cell[i]->velocity += delta_t * vorticity_acc;
+//            if (cell[i]->velocity[2] > 10)
+//                throw std::runtime_error("Vorticity resulted in high velocity");
         }
     }
     // cout << max_vorticity_acc << endl;
@@ -275,6 +217,8 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
             }
             // cout << (0.1 * VOLUME / NUM_PARTICLES) * dv << endl;
             cell[i]->velocity += (0.1 * VOLUME / NUM_PARTICLES) * dv;
+//            if (cell[i]->velocity[2] > 10)
+//                throw std::runtime_error("Viscosity resulted in high velocity");
             // cout << "Final: " << cell[i]->position << " " << cell[i]->velocity << endl;
         }
     }
@@ -285,6 +229,48 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
     cout << "Cycle done in " << (end_t - start_t) * 1E-6 << "ms" << endl;
+}
+
+
+void Fluid::incompressibility_adjustment(int n_iter, double delta_t) {
+    /** Position updates */
+    double coeff = 0.2 * this->KERNEL_COEFF / (PARAMS.density * this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
+    for (int _ = 0; _ < n_iter; _++) {
+        for (int index = 0; index < G_SIZE; index++) {
+            // cout << index << " of " << G_SIZE << endl;
+            const std::vector<PointMass *> &cell = this->grid()[index];
+            if (cell.size() > 1) {
+                size_t n = cell.size();
+
+                std::vector<int> neighbor_indices = this->neighbor_indices(index);
+
+                std::vector<std::vector<double>> W = this->batch_W(index, neighbor_indices);
+                std::vector<std::vector<Vector3D>> scaled_grad_W = this->batch_scaled_grad_W(index, neighbor_indices);
+                std::vector<double> density = this->batch_density(W);
+
+                std::vector<double> lambda = this->batch_lambda(density, scaled_grad_W);
+                std::vector<std::vector<double>> scorr = this->batch_scorr(W);
+
+                for (int i = 0; i < n; i++) {
+                    PointMass *pm = cell[i];
+                    Vector3D dp(0);
+                    for (int j = 0; j < n; j++) {
+                        dp += (this->PARTICLE_MASS * (lambda[i] + lambda[j]) + scorr[i][j]) * scaled_grad_W[i][j];
+                    }
+                    pm->tentative_position += (coeff * dp);
+                    if (isnan(pm->tentative_position[0]) || isnan(pm->velocity[0])) {
+                        throw std::runtime_error("Position adjustment resulted in NaN position or velocity");
+                    }
+//                    cout << "Adjustment: " << pm->tentative_position << " " << pm->velocity << endl;
+                    this->collision_update(pm, delta_t);
+                }
+            }
+        }
+//        cout << "Max adjustment " << coeff * max_position_change << endl;
+//        cout << this->PARTICLE_MASS << endl;
+//        cout << "Adjustment vmax " << vmax << endl;
+        this->cell_update();
+    }
 }
 
 
@@ -360,6 +346,10 @@ Vector3D Fluid::scaled_grad_W(PointMass *pi, PointMass *pj) const {
         }
         // Below is the normalized version. Constant factor taken out for efficiency
         // return (c * this->KERNEL_COEFF / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS)) * xij;
+        if (isnan((c * xij)[0])) {
+            cout << pi->tentative_position << " " << pj->tentative_position << endl;
+            throw std::runtime_error("scaled_grad_W produced NaN value");
+        }
         return c * xij;
     }
 }
@@ -441,17 +431,24 @@ std::vector<double> Fluid::batch_lambda(const std::vector<double> &density,
 
     std::vector<double> result(n);
     for (int i = 0; i < n; i++) {
+        double denominator = 0;
         Vector3D sum(0);
         for (const Vector3D &grad_W: scaled_grad_W[i]) {
-            result[i] += grad_W.norm2();
+            denominator += grad_W.norm2();
             sum += grad_W;
         }
         // cout << "Result " << i << " before large term: " << result[i] << endl;
         // cout << scaled_grad_W[0][1] << endl;
-        result[i] += sum.norm2();
-        result[i] = (coeff * (1 - density[i] / PARAMS.density)) / (result[i] + RELAXATION_EPS);
-        if (isnan(result[i]))
+        denominator += sum.norm2();
+        result[i] = (coeff * (1 - density[i] / PARAMS.density)) / (denominator + RELAXATION_EPS);
+        if (isnan(result[i])) {
+//            for (const Vector3D &grad_W: scaled_grad_W[i]) {
+//                cout << grad_W << endl;
+//            }
+            cout << denominator << endl;
+            cout << (coeff * (1 - density[i] / PARAMS.density)) << endl;
             throw std::runtime_error("lambda produced NaN value");
+        }
     }
     return result;
 }
@@ -475,7 +472,9 @@ std::vector<std::vector<double>> Fluid::batch_scorr(const std::vector<std::vecto
 std::vector<std::vector<Vector3D>>
 Fluid::global_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
                             const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const {
-    double coeff = this->KERNEL_COEFF / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
+    double coeff = (this->KERNEL_COEFF * this->VOLUME) /
+                   (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS * this->NUM_PARTICLES);
+    // double coeff = this->KERNEL_COEFF / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
 
     std::vector<std::vector<Vector3D>> result(G_SIZE);
     for (int index = 0; index < G_SIZE; index++) {
@@ -496,17 +495,17 @@ Fluid::global_curl_velocity(const std::vector<std::vector<int>> &global_neighbor
                 j += neighbors.size();
             }
             result[index][i] *= coeff;
+            // cout << result[index][i] << endl;
         }
     }
     return result;
 }
 
 std::vector<std::vector<Vector3D>>
-Fluid::global_scaled_grad_norm_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
-                                      const std::vector<std::vector<double>> &global_density,
-                                      const std::vector<std::vector<double>> &global_normalized_curl_velocity_norm,
-                                      const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const {
-    double coeff = this->KERNEL_COEFF / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
+Fluid::global_normalized_grad_norm_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
+                                                 const std::vector<std::vector<double>> &global_normalized_curl_velocity_norm,
+                                                 const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const {
+    // double coeff = this->KERNEL_COEFF / (this->SMOOTHING_RADIUS * this->SMOOTHING_RADIUS);
 
     std::vector<std::vector<Vector3D>> result(G_SIZE);
     for (int index = 0; index < G_SIZE; index++) {
@@ -515,7 +514,6 @@ Fluid::global_scaled_grad_norm_curl_velocity(const std::vector<std::vector<int>>
         result[index] = std::vector<Vector3D>(n);
 
         const std::vector<int> &neighbor_indices = global_neighbor_indices[index];
-        const std::vector<double> &density = global_density[index];
         const std::vector<double> &normalized_curl_velocity_norm = global_normalized_curl_velocity_norm[index];
         const std::vector<std::vector<Vector3D>> &scaled_grad_W = global_scaled_grad_W[index];
 
@@ -527,10 +525,16 @@ Fluid::global_scaled_grad_norm_curl_velocity(const std::vector<std::vector<int>>
                     result[index][i] += (normalized_curl_velocity_norm[i] +
                                          global_normalized_curl_velocity_norm[neighbor_index][dj]) *
                                         scaled_grad_W[i][j + dj];
+                    // cout << (cell[i]->tentative_position - this->grid()[neighbor_index][dj]->tentative_position).norm() / this->SMOOTHING_RADIUS << endl;
                 }
                 j += neighbors.size();
             }
-            result[index][i] *= (density[i] * coeff);
+            if (!(result[index][i] == 0))
+                result[index][i].normalize();
+            if (isnan(result[index][i][0])) {
+                cout << i << endl;
+                throw std::runtime_error("normalized grad norm curl velocity produced NaN value");
+            }
         }
     }
     return result;

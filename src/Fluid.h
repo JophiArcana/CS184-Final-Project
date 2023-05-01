@@ -61,6 +61,8 @@ public:
     void simulate(double frames_per_sec, double simulation_steps,
                   const std::vector<Vector3D> &external_accelerations);
 
+    void incompressibility_adjustment(int n_iter, double delta_t);
+
     void collision_update(PointMass *pm, double delta_t);
     void cell_update();
 
@@ -72,10 +74,8 @@ public:
     double CELL_SIZE;
     int G_LENGTH, G_WIDTH, G_HEIGHT, G_SIZE;
     int NUM_PARTICLES;
-    double VOLUME;
     FluidParameters PARAMS;
-    double SMOOTHING_RADIUS;
-    double PARTICLE_MASS;
+    double VOLUME, SMOOTHING_RADIUS, PARTICLE_MASS;
 
 
     std::vector<CollisionObject *> collisionObjects;
@@ -103,10 +103,9 @@ public:
     global_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
                          const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
     std::vector<std::vector<Vector3D>>
-    global_scaled_grad_norm_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
-                                          const std::vector<std::vector<double>> &global_density,
-                                          const std::vector<std::vector<double>> &global_normalized_curl_velocity_norm,
-                                          const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
+    global_normalized_grad_norm_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
+                                              const std::vector<std::vector<double>> &global_normalized_curl_velocity_norm,
+                                              const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
 
 private:
     double KERNEL_COEFF;

@@ -11,9 +11,11 @@ using namespace CGL;
 class Halfedge;
 
 struct PointMass {
+    static int ID_NUM;
+
     PointMass(Vector3D position, Vector3D velocity, bool pinned)
             : pinned(pinned), start_position(position), position(position), tentative_position(position),
-              velocity(velocity), acceleration(0), collided(false) {}
+              velocity(velocity), acceleration(0), collided(false), ID(PointMass::ID_NUM++) {}
 
     Vector3D normal();
 
@@ -33,6 +35,7 @@ struct PointMass {
 
     // for cell updates
     bool collided;
+    const int ID;
 
     // mesh reference
     Halfedge *halfedge;

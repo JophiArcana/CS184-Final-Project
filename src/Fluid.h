@@ -28,7 +28,8 @@ struct FluidParameters {
                     double kinematic_viscosity,
                     double tait_coefficient,
                     double tait_gamma)
-            : density(density), rms_velocity(rms_velocity), average_distance(average_distance), molar_mass(molar_mass), kinematic_viscosity(kinematic_viscosity), tait_coefficient(tait_coefficient), tait_gamma(tait_gamma) {}
+            : density(density), rms_velocity(rms_velocity), average_distance(average_distance), molar_mass(molar_mass),
+              kinematic_viscosity(kinematic_viscosity), tait_coefficient(tait_coefficient), tait_gamma(tait_gamma) {}
 
     ~FluidParameters() = default;
 
@@ -51,12 +52,15 @@ public:
 
     Fluid(double length, double width, double height, int nParticles, FluidParameters params);
 
+    std::vector<PointMass *> list;
     std::vector<PointMass *> *grid() const;
     int get_index(const Vector3D &pos) const;
     std::vector<PointMass *> &get_cell(const Vector3D &pos) const;
+    std::vector<int> neighbor_indices(int index) const;
 
     void simulate(double frames_per_sec, double simulation_steps,
                   const std::vector<Vector3D> &external_accelerations);
+
     void collision_update(PointMass *pm, double delta_t);
     void cell_update();
 
@@ -68,6 +72,7 @@ public:
     double CELL_SIZE;
     int G_LENGTH, G_WIDTH, G_HEIGHT, G_SIZE;
     int NUM_PARTICLES;
+    double VOLUME;
     FluidParameters PARAMS;
     double SMOOTHING_RADIUS;
     double PARTICLE_MASS;
@@ -76,6 +81,7 @@ public:
     std::vector<CollisionObject *> collisionObjects;
 
     FluidMesh *mesh;
+
     void buildFluidMesh();
 
     std::vector<double> timestamps;
@@ -84,17 +90,23 @@ public:
     double W(PointMass *pi, PointMass *pj) const;
     Vector3D scaled_grad_W(PointMass *pi, PointMass *pj) const;
 
-    std::vector<std::vector<double>> batch_W(int index) const;
-    std::vector<std::vector<Vector3D>> batch_scaled_grad_W(int index) const;
+    std::vector<std::vector<double>> batch_W(int index, const std::vector<int> &neighbor_indices) const;
+    std::vector<std::vector<Vector3D>> batch_scaled_grad_W(int index, const std::vector<int> &neighbor_indices) const;
 
     std::vector<double> batch_density(const std::vector<std::vector<double>> &W) const;
 
-    std::vector<double> batch_lambda(const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &scaled_grad_W) const;
+    std::vector<double>
+    batch_lambda(const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &scaled_grad_W) const;
     std::vector<std::vector<double>> batch_scorr(const std::vector<std::vector<double>> &W) const;
 
-    std::vector<double> batch_pressure(const std::vector<double> &density) const;
-    std::vector<Vector3D> batch_scaled_grad_pressure(const std::vector<double> &pressure, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &scaled_grad_W) const;
-    std::vector<Vector3D> batch_scaled_laplacian_velocity(int index, const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &scaled_grad_W) const;
+    std::vector<std::vector<Vector3D>>
+    global_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
+                         const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
+    std::vector<std::vector<Vector3D>>
+    global_scaled_grad_norm_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
+                                          const std::vector<std::vector<double>> &global_density,
+                                          const std::vector<std::vector<double>> &global_normalized_curl_velocity_norm,
+                                          const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
 
 private:
     double KERNEL_COEFF;

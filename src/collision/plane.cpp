@@ -10,7 +10,7 @@ using namespace std;
 using namespace CGL;
 
 #define SURFACE_OFFSET 0.0001
-#define DAMPING 0.3
+#define DAMPING 0.5
 
 void Plane::collide(PointMass &pm, double delta_t) {
     // TODO (Part 3): Handle collisions with planes.
@@ -32,7 +32,7 @@ void Plane::collide(PointMass &pm, double delta_t) {
             throw std::runtime_error("Collision out velocity exceeded old velocity");
         }
         // cout << "\tPost-collision velocity " << pm.velocity << endl;
-        pm.tentative_position = collision_position + crossover_t * pm.velocity;
+        pm.tentative_position = collision_position + SURFACE_OFFSET * this->normal;
         pm.collided = true;
 
         // cout << "\tPost-collision position " << pm.tentative_position << endl;

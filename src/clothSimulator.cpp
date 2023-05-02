@@ -219,9 +219,10 @@ void ClothSimulator::init() {
 //        avg_pm_position += pm.position / cloth->point_masses.size();
 //    }
 
-    CGL::Vector3D target(avg_pm_position.x, avg_pm_position.y / 2,
-                         avg_pm_position.z);
-    CGL::Vector3D c_dir(0., 0., 0.);
+//    CGL::Vector3D target(avg_pm_position.x, avg_pm_position.y / 2, avg_pm_position.z);
+    CGL::Vector3D target(0.5, 0.5, 0.5);
+    CGL::Vector3D c_dir(-1, -1, -1);
+    c_dir.normalize();
     // canonical_view_distance = max(cloth->width, cloth->height) * 0.9;
     canonical_view_distance = max(fluid->WIDTH, fluid->HEIGHT) * 0.9;
     scroll_rate = canonical_view_distance / 10;

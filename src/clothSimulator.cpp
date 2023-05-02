@@ -382,9 +382,9 @@ void ClothSimulator::drawNormals(GLShader &shader) {
         // Triangle *tri = cloth->clothMesh->triangles[i];
         Triangle *tri = fluid->mesh->triangles[i];
 
-        Vector3D p1 = *(tri->pm1); //->position;
-        Vector3D p2 = *(tri->pm2); //->position;
-        Vector3D p3 = *(tri->pm3); //->position;
+        Vector3D p1 = (tri->pm1); //->position;
+        Vector3D p2 = (tri->pm2); //->position;
+        Vector3D p3 = (tri->pm3); //->position;
 
 //        Vector3D n1 = tri->pm1->normal();
 //        Vector3D n2 = tri->pm2->normal();
@@ -419,9 +419,9 @@ void ClothSimulator::drawPhong(GLShader &shader) {
     for (int i = 0; i < num_tris; i++) {
         Triangle *tri = fluid->mesh->triangles[i];// cloth->clothMesh->triangles[i];
 
-        Vector3D p1 = *(tri->pm1); //->position;
-        Vector3D p2 = *(tri->pm2); //->position;
-        Vector3D p3 = *(tri->pm3); //->position;
+        Vector3D p1 = (tri->pm1); //->position;
+        Vector3D p2 = (tri->pm2); //->position;
+        Vector3D p3 = (tri->pm3); //->position;
 
 //        Vector3D n1 = tri->pm1->normal();
 //        Vector3D n2 = tri->pm2->normal();

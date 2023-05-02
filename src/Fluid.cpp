@@ -80,6 +80,8 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
         this->list.push_back(pm);
         this->get_cell(position).push_back(pm);
     }
+    FluidMesh* fmesh = new FluidMesh();
+    this->mesh = fmesh;
 
 }
 
@@ -235,6 +237,8 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     // cout << "Velocity update vmax " << vmax << endl;
     // cout << "Velocity updates done" << endl;
 
+    this->buildFluidMesh();
+
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
     cout << "Cycle done in " << (end_t - start_t) * 1E-6 << "ms" << endl;
@@ -360,11 +364,14 @@ void Fluid::cell_update() {
     // delete[] this->grid;
     // this->grid = new_grid;
     // cout << "cell update end" << endl;
-}
+    }
 
 
 void Fluid::buildFluidMesh() {
     /** TODO: implement mesh construction */
+
+    mesh->triangles.clear();
+
     vector<double> pressures = vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
 
     for (int i = 0; i <= G_LENGTH; i += 1) {
@@ -389,7 +396,7 @@ void Fluid::buildFluidMesh() {
                     Vector3D pos = Vector3D(i + dx[q], j + dy[q], k + dz[q]);
                     int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
                     for (PointMass *pm: points) {
-                        pressures[index2] += 1 / min(0.001, (pos - pm->position).norm());
+                        pressures[index2] += 1 / min(0.01, (pos - pm->position).norm());
                     }
                 }
             }
@@ -400,7 +407,7 @@ void Fluid::buildFluidMesh() {
     vector<int> cubeBitmap = vector<int>(G_LENGTH * G_WIDTH * G_LENGTH);
 
     FluidMesh mesh;
-    vector<int> neighbors = {100, 010, 001};
+    vector<int> neighbors = {4, 2, 1};
 
     // TODO change value
     double THRESHOLD = 0.1;
@@ -408,11 +415,13 @@ void Fluid::buildFluidMesh() {
     for (int i = 0; i < G_LENGTH; i += 1) {
         for (int j = 0; j < G_WIDTH; j += 1) {
             for (int k = 0; k < G_HEIGHT; k += 1) {
+                cout << i << " " << j << " " << k << endl;
                 int index = k + G_WIDTH * (j + G_LENGTH * i);
+                cubeBitmap[index] = 0;
                 for (int q = 0; q < 8; q += 1) {
                     int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
                     if (pressures[index2] < THRESHOLD) {
-                        cubeBitmap[index] |= 1 << q;
+                        cubeBitmap[index] |= (1 << q);
                     }
                 }
 
@@ -421,6 +430,8 @@ void Fluid::buildFluidMesh() {
                 }
 
                 int visited = 0;
+
+                cout << cubeBitmap[index] << endl;
 
                 for (int q = 0; q < 8; q += 1) {
                     if ((visited & (1 << q)) != 0) { // already visited
@@ -437,14 +448,21 @@ void Fluid::buildFluidMesh() {
                     while (queue.size() > 0) {
                         int ind = queue.back();
                         queue.pop_back();
-                        if (visited & (1 << ind) != 0) {
+                        // cout << ind << " " << visited << endl;
+                        if ((visited & (1 << ind)) != 0) {
                             continue;
                         }
-                        visited &= 1 << ind;
+
+                        // cout << queue.size() << endl;
+
+                        visited |= (1 << ind);
 
                         for (int toXor: neighbors) {
                             int nextInd = ind ^ toXor;
-                            int index3 = index + nextInd & 1 + G_WIDTH * (((nextInd & 2) >> 1) + G_LENGTH * (nextInd & 4) >> 2);
+//                            if (nextInd == 3) {
+//                                cout << ind << " " << toXor << " " << nextInd << endl;
+//                            }
+                            int index3 = index + (nextInd & 1) + G_WIDTH * (((nextInd & 2) >> 1) + G_LENGTH * (nextInd & 4) >> 2);
                             if (pressures[index3] > THRESHOLD) {
                                 // vertex on edge
                                 // edges.push_back(ind << 3 | nextInd);
@@ -464,14 +482,17 @@ void Fluid::buildFluidMesh() {
                     // convert vertices into a mesh
 
                     if (vertices.size() < 3) {
-                        cout << "ERROR" << endl;
+                        cout << "ERROR " << vertices.size() << endl;
+                        continue;
+                    } else {
+                        cout << "SUCCESS" << endl;
                     }
 
                     for (int i = 0; i <= vertices.size() - 3; i += 1) { // TODO change uv values of triangle
                         // i, i + 1, i + 2
-                        Triangle triangle = Triangle(&vertices[i], &vertices[i + 1], &vertices[i + 2], vertices[i], vertices[i + 1], vertices[i + 2]);
-                        triangle.normal = cross(vertices[i] - vertices[i + 1], vertices[i + 2] - vertices[i + 1]);
-                        mesh.triangles.push_back(&triangle);
+                        Triangle *triangle = new Triangle(vertices[i], vertices[i + 1], vertices[i + 2], vertices[i], vertices[i + 1], vertices[i + 2]);
+                        triangle->normal = cross(vertices[i] - vertices[i + 1], vertices[i + 2] - vertices[i + 1]);
+                        mesh.triangles.push_back(triangle);
                     }
 
                 }
@@ -479,7 +500,7 @@ void Fluid::buildFluidMesh() {
         }
     }
 
-
+    cout << "done with building mesh" << endl;
 }
 
 

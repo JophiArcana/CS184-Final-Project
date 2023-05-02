@@ -92,7 +92,6 @@ inline std::vector<PointMass *> &Fluid::get_cell(const Vector3D &pos) const {
 
 std::vector<int> Fluid::neighbor_indices(int index) const {
     const std::vector<PointMass *> &cell = this->grid()[index];
-
     int l = index / (G_WIDTH * G_HEIGHT), w = (index / G_HEIGHT) % G_WIDTH, h = index % G_HEIGHT;
     std::vector<int> result(0);
     for (int tl = max(0, l - 1); tl < min(G_LENGTH, l + 2); tl++) {
@@ -328,6 +327,38 @@ void Fluid::cell_update() {
 
 void Fluid::buildFluidMesh() {
     /** TODO: implement mesh construction */
+    vector<double> pressures = new vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
+
+    for (int i = 0; i <= G_LENGTH; i += 1) {
+        for (int j = 0; j <= G_WIDTH; j += 1) {
+            for (int k = 0; k <= G_HEIGHT; k += 1) {
+                int index = k + (G_WIDTH + 1) * (j + (G_LENGTH + 1) * i);
+                pressures[index] = 0; // TODO implement
+            }
+        }
+    }
+
+    vector<int> dx = {0, 0, 0, 0, 1, 1, 1, 1};
+    vector<int> dy = {0, 0, 1, 1, 0, 0, 1, 1};
+    vector<int> dz = {0, 1, 0, 1, 0, 1, 0, 1};
+
+    vector<int> cubeBitmap = new vector<int>(G_LENGTH * G_WIDTH * G_LENGTH);
+
+    for (int i = 0; i < G_LENGTH; i += 1) {
+        for (int j = 0; j < G_WIDTH; j += 1) {
+            for (int k = 0; k < G_HEIGHT; k += 1) {
+                int index = k + G_WIDTH * (j + G_LENGTH * i);
+                for (int q = 0; q < 8; q += 1) {
+                    int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
+                    if (pressures[index2] < 0.0) { // TODO implement with threshold
+                        cubeBitmap[index] += 1 << q;
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO convert into triangular mesh
 }
 
 

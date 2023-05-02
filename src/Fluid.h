@@ -64,9 +64,10 @@ public:
                   const std::vector<Vector3D> &external_accelerations);
 
     void forward_movement(const std::vector<Vector3D> &external_accelerations, double delta_t);
-    void incompressibility_adjustment(int n_iter, double delta_t);
+    void incompressibility_adjustment(int n_iter, double timestep, double delta_t);
 
     void collision_update(double delta_t);
+    void constrain_update();
     void cell_update();
 
     std::vector<PointMass *> *grid1, *grid2;
@@ -86,6 +87,7 @@ public:
     FluidMesh *mesh;
 
     void buildFluidMesh();
+    void debugFluidMesh();
 
     std::vector<double> timestamps;
     e_orientation orientation;

@@ -26,6 +26,8 @@ void Sphere::collide(PointMass &pm, double delta_t) {
     pm.velocity = pm.velocity - 2 * normal * pm.velocity;
 }
 
+void Sphere::constrain(PointMass &pm) {}
+
 void Sphere::render(GLShader &shader) {
     // We decrease the radius here so flat triangles don't behave strangely
     // and intersect with the sphere when rendered

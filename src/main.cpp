@@ -494,7 +494,7 @@ int main(int argc, char **argv) {
     }
 
     FluidParameters fp = Fluid::WATER;
-    Fluid fluid(1, 1, 1, 1000, fp);
+    Fluid fluid(1, 1, 1, 2000, fp);
     vector<CollisionObject *> objects;
 
     bool success = loadObjectsFromFile(file_to_load_from, &fluid, &fp, &objects, sphere_num_lat, sphere_num_lon);
@@ -507,7 +507,8 @@ int main(int argc, char **argv) {
     createGLContexts();
 
     // Initialize the Cloth object
-    fluid.buildFluidMesh();
+    // fluid.buildFluidMesh();
+    fluid.debugFluidMesh();
 
     // Initialize the ClothSimulator object
     app = new ClothSimulator(project_root, screen);

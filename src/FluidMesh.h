@@ -6,6 +6,7 @@
 #define CLOTHSIM_FLUIDMESH_H
 
 #include <vector>
+#include <mutex>
 
 #include "CGL/CGL.h"
 #include "pointMass.h"
@@ -16,7 +17,10 @@ using namespace std;
 class Triangle {
 public:
     Triangle(Vector3D pm1, Vector3D pm2, Vector3D pm3, Vector3D uv1, Vector3D uv2, Vector3D uv3)
-            : pm1(pm1), pm2(pm2), pm3(pm3), uv1(uv1), uv2(uv2), uv3(uv3) {}
+            : pm1(pm1), pm2(pm2), pm3(pm3), uv1(uv1), uv2(uv2), uv3(uv3) {
+        normal = -cross(pm2 - pm1, pm3 - pm2);
+        normal.normalize();
+    }
 
     // Static references to constituent mesh objects
     Vector3D pm1;
@@ -53,7 +57,9 @@ class FluidMesh {
 public:
     ~FluidMesh() {}
 
-    vector<Triangle> triangles;
+    std::vector<Triangle> triangles;
+    std::mutex mtx;
+
 }; // struct FluidMesh
 
 

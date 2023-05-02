@@ -15,9 +15,10 @@ public:
             : origin(origin), radius(radius), radius2(radius * radius),
               friction(friction), m_sphere_mesh(Misc::SphereMesh(num_lat, num_lon)) {}
 
-    void render(GLShader &shader);
+    void render(GLShader &shader) override;
 
-    void collide(PointMass &pm, double delta_t);
+    void collide(PointMass &pm, double delta_t) override;
+    void constrain(PointMass &pm) override;
 
 private:
     Vector3D origin;

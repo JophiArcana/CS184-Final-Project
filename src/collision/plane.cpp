@@ -10,7 +10,7 @@ using namespace std;
 using namespace CGL;
 
 #define SURFACE_OFFSET 0.0001
-#define DAMPING 0.5
+#define DAMPING 0.3
 
 void Plane::collide(PointMass &pm, double delta_t) {
     // TODO (Part 3): Handle collisions with planes.
@@ -32,7 +32,7 @@ void Plane::collide(PointMass &pm, double delta_t) {
 //            throw std::runtime_error("Collision out velocity exceeded old velocity");
 //        }
         // cout << "\tPost-collision velocity " << pm.velocity << endl;
-        pm.tentative_position = collision_position + SURFACE_OFFSET * this->normal;
+        pm.tentative_position = collision_position + + crossover_t * pm.velocity + SURFACE_OFFSET * this->normal;
         pm.collided = true;
 
         // cout << "\tPost-collision position " << pm.tentative_position << endl;
@@ -55,8 +55,17 @@ void Plane::collide(PointMass &pm, double delta_t) {
     }
 }
 
+void Plane::constrain(PointMass &pm) {
+    // TODO (Part 3): Handle collisions with planes.
+    double d = dot(pm.tentative_position - this->point, this->normal);
+    if (d <= 0) {
+        pm.tentative_position += (dot(this->point - pm.tentative_position, this->normal) + SURFACE_OFFSET) * this->normal;
+        pm.position = pm.tentative_position;
+    }
+}
+
 void Plane::render(GLShader &shader) {
-    nanogui::Color color(0.5f, 1.f, 1.f, 0.4f);
+    nanogui::Color color(0.5f, 1.f, 1.f, 0.1f);
 
     Vector3f sPoint(point.x, point.y, point.z);
     Vector3f sNormal(normal.x, normal.y, normal.z);

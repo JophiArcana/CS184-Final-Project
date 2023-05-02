@@ -16,9 +16,10 @@ public:
     Plane(const Vector3D &point, const Vector3D &normal, double friction)
             : point(point), normal(normal.unit()), friction(friction) {}
 
-    void render(GLShader &shader);
+    void render(GLShader &shader) override;
 
-    void collide(PointMass &pm, double delta_t);
+    void collide(PointMass &pm, double delta_t) override;
+    void constrain(PointMass &pm) override;
 
     Vector3D point;
     Vector3D normal;

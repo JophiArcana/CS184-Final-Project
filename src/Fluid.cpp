@@ -380,7 +380,8 @@ void Fluid::buildFluidMesh() {
                     vector<Vector3D> vertices = vector<Vector3D>(); //
                     queue.push_back(q);
                     while (queue.size() > 0) {
-                        int ind = queue.pop_back();
+                        int ind = queue.back();
+                        queue.pop_back();
                         if (visited & (1 << ind) != 0) {
                             continue;
                         }
@@ -388,8 +389,7 @@ void Fluid::buildFluidMesh() {
 
                         for (int toXor: neighbors) {
                             int nextInd = ind ^ toXor;
-                            // buggy code!
-                            int index3 = index2 + toXor & 1 + G_WIDTH * (toXor & 2 + G_LENGTH * toXor & 4);
+                            int index3 = index + nextInd & 1 + G_WIDTH * ((nextInd & 2) >> 1 + G_LENGTH * (nextInd & 4) >> 2);
                             if (pressures[index3] > 0.0) { // TODO implement with threshold
                                 // vertex on edge
                                 // edges.push_back(ind << 3 | nextInd);

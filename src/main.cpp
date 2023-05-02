@@ -516,7 +516,8 @@ int main(int argc, char **argv) {
     app->loadFluid(&fluid);
     // TODO implement
     app->loadFluidParameters(&fp);
-    app->loadCollisionObjects(&objects);
+    app->loadCollisionObjects(&fluid.collisionObjects);
+    // app->loadCollisionObjects(&objects);
     app->init();
 
     // Call this after all the widgets have been defined

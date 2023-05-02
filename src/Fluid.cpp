@@ -74,7 +74,7 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
 
     for (int i = 0; i < nParticles; i += 1) {
         Vector3D position = Vector3D(LENGTH * std::rand() / RAND_MAX, WIDTH * std::rand() / RAND_MAX,
-                                     0.5 * HEIGHT * std::rand() / RAND_MAX);
+                                     0.5 * HEIGHT * (std::rand() / RAND_MAX + 1));
         Vector3D velocity = Vector3D(norm_dist_gen(gen), norm_dist_gen(gen), norm_dist_gen(gen));
         PointMass *pm = new PointMass(position, velocity, false);
         this->list.push_back(pm);

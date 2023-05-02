@@ -224,7 +224,7 @@ void ClothSimulator::init() {
     CGL::Vector3D c_dir(-1, -1, -1);
     c_dir.normalize();
     // canonical_view_distance = max(cloth->width, cloth->height) * 0.9;
-    canonical_view_distance = max(fluid->WIDTH, fluid->HEIGHT) * 0.9;
+    canonical_view_distance = max(fluid->WIDTH, fluid->HEIGHT) * 10;
     scroll_rate = canonical_view_distance / 10;
 
     view_distance = canonical_view_distance * 2;
@@ -290,7 +290,6 @@ void ClothSimulator::drawContents() {
             break;
         case PHONG:
             // Others
-            cout << "Phong shading" << endl;
             Vector3D cam_pos = camera.position();
             shader.setUniform("u_color", color, false);
             shader.setUniform("u_cam_pos", Vector3f(cam_pos.x, cam_pos.y, cam_pos.z), false);
@@ -417,7 +416,6 @@ void ClothSimulator::drawPhong(GLShader &shader) {
     MatrixXf uvs(2, num_tris * 3);
     MatrixXf tangents(4, num_tris * 3);
 
-    cout << num_tris << endl;
     for (int i = 0; i < num_tris; i++) {
         Triangle tri = fluid->mesh->triangles[i];// cloth->clothMesh->triangles[i];
 

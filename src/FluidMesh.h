@@ -23,6 +23,8 @@ public:
     Vector3D *pm2;
     Vector3D *pm3;
 
+    Vector3D normal;
+
     // UV values for each of the points.
     // Uses Vector3D for convenience. This means that the z dimension
     // is not used, and xy corresponds to uv.

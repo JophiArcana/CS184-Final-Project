@@ -356,7 +356,7 @@ void Fluid::cell_update() {
             new_grid[this->get_index(pm->tentative_position)].push_back(pm);
         }
     }
-    this->grid_toggle = ~this->grid_toggle;
+    this->grid_toggle = !this->grid_toggle;
     // delete[] this->grid;
     // this->grid = new_grid;
     // cout << "cell update end" << endl;
@@ -371,7 +371,7 @@ void Fluid::buildFluidMesh() {
         for (int j = 0; j <= G_WIDTH; j += 1) {
             for (int k = 0; k <= G_HEIGHT; k += 1) {
                 int index = k + (G_WIDTH + 1) * (j + (G_LENGTH + 1) * i);
-                pressures[index] = 0; // TODO implement
+                pressures[index] = 0.0;
             }
         }
     }
@@ -380,11 +380,30 @@ void Fluid::buildFluidMesh() {
     vector<int> dy = {0, 0, 1, 1, 0, 0, 1, 1};
     vector<int> dz = {0, 1, 0, 1, 0, 1, 0, 1};
 
+    for (int i = 0; i < G_LENGTH; i += 1) {
+        for (int j = 0; j < G_WIDTH; j += 1) {
+            for (int k = 0; k < G_HEIGHT; k += 1) {
+                int index = k + G_WIDTH * (j + G_LENGTH * i);
+                vector<PointMass *> points = this->grid()[index];
+                for (int q = 0; q < 8; q += 1) {
+                    Vector3D pos = Vector3D(i + dx[q], j + dy[q], k + dz[q]);
+                    int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
+                    for (PointMass *pm: points) {
+                        pressures[index2] += 1 / min(0.001, (pos - pm->position).norm());
+                    }
+                }
+            }
+        }
+    }
+
     // probably don't need this
     vector<int> cubeBitmap = vector<int>(G_LENGTH * G_WIDTH * G_LENGTH);
 
     FluidMesh mesh;
     vector<int> neighbors = {100, 010, 001};
+
+    // TODO change value
+    double THRESHOLD = 0.1;
 
     for (int i = 0; i < G_LENGTH; i += 1) {
         for (int j = 0; j < G_WIDTH; j += 1) {
@@ -392,8 +411,8 @@ void Fluid::buildFluidMesh() {
                 int index = k + G_WIDTH * (j + G_LENGTH * i);
                 for (int q = 0; q < 8; q += 1) {
                     int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
-                    if (pressures[index2] < 0.0) { // TODO implement with threshold
-                        cubeBitmap[index] += 1 << q;
+                    if (pressures[index2] < THRESHOLD) {
+                        cubeBitmap[index] |= 1 << q;
                     }
                 }
 
@@ -401,15 +420,14 @@ void Fluid::buildFluidMesh() {
                     continue;
                 }
 
-                // TODO convert into triangular mesh
                 int visited = 0;
 
                 for (int q = 0; q < 8; q += 1) {
-                    if (visited & (1 << q) != 0) { // already visited
+                    if ((visited & (1 << q)) != 0) { // already visited
                         continue;
                     }
                     int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
-                    if (pressures[index2] > 0.0) { // TODO implement with threshold
+                    if (pressures[index2] > THRESHOLD) {
                         continue;
                     }
 
@@ -426,8 +444,8 @@ void Fluid::buildFluidMesh() {
 
                         for (int toXor: neighbors) {
                             int nextInd = ind ^ toXor;
-                            int index3 = index + nextInd & 1 + G_WIDTH * ((nextInd & 2) >> 1 + G_LENGTH * (nextInd & 4) >> 2);
-                            if (pressures[index3] > 0.0) { // TODO implement with threshold
+                            int index3 = index + nextInd & 1 + G_WIDTH * (((nextInd & 2) >> 1) + G_LENGTH * (nextInd & 4) >> 2);
+                            if (pressures[index3] > THRESHOLD) {
                                 // vertex on edge
                                 // edges.push_back(ind << 3 | nextInd);
                                 double pressure1 = pressures[index2];
@@ -452,6 +470,7 @@ void Fluid::buildFluidMesh() {
                     for (int i = 0; i <= vertices.size() - 3; i += 1) { // TODO change uv values of triangle
                         // i, i + 1, i + 2
                         Triangle triangle = Triangle(&vertices[i], &vertices[i + 1], &vertices[i + 2], vertices[i], vertices[i + 1], vertices[i + 2]);
+                        triangle.normal = cross(vertices[i] - vertices[i + 1], vertices[i + 2] - vertices[i + 1]);
                         mesh.triangles.push_back(&triangle);
                     }
 

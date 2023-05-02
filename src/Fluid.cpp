@@ -417,7 +417,7 @@ void Fluid::buildFluidMesh() {
     for (int i = 0; i < G_LENGTH; i += 1) {
         for (int j = 0; j < G_WIDTH; j += 1) {
             for (int k = 0; k < G_HEIGHT; k += 1) {
-                cout << i << " " << j << " " << k << endl;
+//                cout << i << " " << j << " " << k << endl;
                 int index = k + G_WIDTH * (j + G_LENGTH * i);
                 cubeBitmap[index] = 0;
                 for (int q = 0; q < 8; q += 1) {
@@ -433,7 +433,7 @@ void Fluid::buildFluidMesh() {
 
                 int visited = 0;
 
-                cout << cubeBitmap[index] << endl;
+//                cout << cubeBitmap[index] << endl;
 
                 for (int q = 0; q < 8; q += 1) {
                     if ((visited & (1 << q)) != 0) { // already visited
@@ -484,10 +484,10 @@ void Fluid::buildFluidMesh() {
                     // convert vertices into a mesh
 
                     if (vertices.size() < 3) {
-                        cout << "ERROR " << vertices.size() << endl;
+//                        cout << "ERROR " << vertices.size() << endl;
                         continue;
                     } else {
-                        cout << "SUCCESS" << endl;
+//                        cout << "SUCCESS" << endl;
                     }
 
                     for (int i = 0; i <= vertices.size() - 3; i += 1) { // TODO change uv values of triangle
@@ -501,8 +501,6 @@ void Fluid::buildFluidMesh() {
             }
         }
     }
-
-    cout << "done with building mesh" << endl;
 }
 
 

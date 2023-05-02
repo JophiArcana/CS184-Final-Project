@@ -258,7 +258,6 @@ void ClothSimulator::drawContents() {
             fluid->simulate(frames_per_sec, simulation_steps, external_accelerations);
         }
     }
-    cout << "Here in cloth simulator" << endl;
 
     // Bind the active shader
 

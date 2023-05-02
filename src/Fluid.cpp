@@ -237,7 +237,7 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     // cout << "Velocity update vmax " << vmax << endl;
     // cout << "Velocity updates done" << endl;
 
-    // this->buildFluidMesh();
+    this->buildFluidMesh();
 
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
@@ -369,8 +369,11 @@ void Fluid::cell_update() {
 
 void Fluid::buildFluidMesh() {
     /** TODO: implement mesh construction */
-
-    mesh->triangles.clear();
+    if (this->mesh == nullptr) {
+        this->mesh = new FluidMesh();
+    } else {
+        mesh->triangles.clear();
+    }
 
     vector<double> pressures = vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
 
@@ -404,7 +407,7 @@ void Fluid::buildFluidMesh() {
     }
 
     // probably don't need this
-    vector<int> cubeBitmap = vector<int>(G_LENGTH * G_WIDTH * G_LENGTH);
+    vector<int> cubeBitmap = vector<int>(G_SIZE);
 
     vector<int> neighbors = {4, 2, 1};
 

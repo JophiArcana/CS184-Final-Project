@@ -475,6 +475,9 @@ void Fluid::buildFluidMesh() {
                                 point[0] += t * ((ind & 4) >> 2) + (1 - t) * ((nextInd & 4) >> 2);
                                 point[1] += t * ((ind & 2) >> 1) + (1 - t) * ((nextInd & 2) >> 1);
                                 point[2] += t * ((ind & 1) >> 0) + (1 - t) * ((nextInd & 1) >> 0);
+                                point[0] *= LENGTH / G_LENGTH;
+                                point[1] *= WIDTH / G_WIDTH;
+                                point[2] *= HEIGHT / G_HEIGHT;
                                 vertices.push_back(point);
                             } else {
                                 queue.push_back(nextInd);

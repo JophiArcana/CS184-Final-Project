@@ -5,7 +5,7 @@
 #ifndef CLOTHSIM_FLUID_H
 #define CLOTHSIM_FLUID_H
 
-// #define MULTITHREAD true
+#define MULTITHREAD true
 
 #include <random>
 #include <deque>

@@ -258,6 +258,7 @@ void ClothSimulator::drawContents() {
             fluid->simulate(frames_per_sec, simulation_steps, external_accelerations);
         }
     }
+    cout << "Here in cloth simulator" << endl;
 
     // Bind the active shader
 
@@ -288,7 +289,6 @@ void ClothSimulator::drawContents() {
             drawNormals(shader);
             break;
         case PHONG:
-
             // Others
             Vector3D cam_pos = camera.position();
             shader.setUniform("u_color", color, false);
@@ -380,18 +380,18 @@ void ClothSimulator::drawNormals(GLShader &shader) {
 
     for (int i = 0; i < num_tris; i++) {
         // Triangle *tri = cloth->clothMesh->triangles[i];
-        Triangle *tri = fluid->mesh->triangles[i];
+        Triangle tri = fluid->mesh->triangles[i];
 
-        Vector3D p1 = (tri->pm1); //->position;
-        Vector3D p2 = (tri->pm2); //->position;
-        Vector3D p3 = (tri->pm3); //->position;
+        Vector3D p1 = tri.pm1; //->position;
+        Vector3D p2 = tri.pm2; //->position;
+        Vector3D p3 = tri.pm3; //->position;
 
 //        Vector3D n1 = tri->pm1->normal();
 //        Vector3D n2 = tri->pm2->normal();
 //        Vector3D n3 = tri->pm3->normal();
-        Vector3D n1 = tri->normal;
-        Vector3D n2 = tri->normal;
-        Vector3D n3 = tri->normal;
+        Vector3D n1 = tri.normal;
+        Vector3D n2 = tri.normal;
+        Vector3D n3 = tri.normal;
 
         positions.col(i * 3) << p1.x, p1.y, p1.z, 1.0;
         positions.col(i * 3 + 1) << p2.x, p2.y, p2.z, 1.0;
@@ -417,18 +417,18 @@ void ClothSimulator::drawPhong(GLShader &shader) {
     MatrixXf tangents(4, num_tris * 3);
 
     for (int i = 0; i < num_tris; i++) {
-        Triangle *tri = fluid->mesh->triangles[i];// cloth->clothMesh->triangles[i];
+        Triangle tri = fluid->mesh->triangles[i];// cloth->clothMesh->triangles[i];
 
-        Vector3D p1 = (tri->pm1); //->position;
-        Vector3D p2 = (tri->pm2); //->position;
-        Vector3D p3 = (tri->pm3); //->position;
+        Vector3D p1 = tri.pm1; //->position;
+        Vector3D p2 = tri.pm2; //->position;
+        Vector3D p3 = tri.pm3; //->position;
 
 //        Vector3D n1 = tri->pm1->normal();
 //        Vector3D n2 = tri->pm2->normal();
 //        Vector3D n3 = tri->pm3->normal();
-        Vector3D n1 = tri->normal;
-        Vector3D n2 = tri->normal;
-        Vector3D n3 = tri->normal;
+        Vector3D n1 = tri.normal;
+        Vector3D n2 = tri.normal;
+        Vector3D n3 = tri.normal;
 
         positions.col(i * 3) << p1.x, p1.y, p1.z, 1.0;
         positions.col(i * 3 + 1) << p2.x, p2.y, p2.z, 1.0;
@@ -438,9 +438,9 @@ void ClothSimulator::drawPhong(GLShader &shader) {
         normals.col(i * 3 + 1) << n2.x, n2.y, n2.z, 0.0;
         normals.col(i * 3 + 2) << n3.x, n3.y, n3.z, 0.0;
 
-        uvs.col(i * 3) << tri->uv1.x, tri->uv1.y;
-        uvs.col(i * 3 + 1) << tri->uv2.x, tri->uv2.y;
-        uvs.col(i * 3 + 2) << tri->uv3.x, tri->uv3.y;
+        uvs.col(i * 3) << tri.uv1.x, tri.uv1.y;
+        uvs.col(i * 3 + 1) << tri.uv2.x, tri.uv2.y;
+        uvs.col(i * 3 + 2) << tri.uv3.x, tri.uv3.y;
 
         tangents.col(i * 3) << 1.0, 0.0, 0.0, 1.0;
         tangents.col(i * 3 + 1) << 1.0, 0.0, 0.0, 1.0;

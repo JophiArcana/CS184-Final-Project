@@ -237,7 +237,7 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     // cout << "Velocity update vmax " << vmax << endl;
     // cout << "Velocity updates done" << endl;
 
-    this->buildFluidMesh();
+    // this->buildFluidMesh();
 
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
@@ -406,7 +406,6 @@ void Fluid::buildFluidMesh() {
     // probably don't need this
     vector<int> cubeBitmap = vector<int>(G_LENGTH * G_WIDTH * G_LENGTH);
 
-    FluidMesh mesh;
     vector<int> neighbors = {4, 2, 1};
 
     // TODO change value
@@ -490,9 +489,9 @@ void Fluid::buildFluidMesh() {
 
                     for (int i = 0; i <= vertices.size() - 3; i += 1) { // TODO change uv values of triangle
                         // i, i + 1, i + 2
-                        Triangle *triangle = new Triangle(vertices[i], vertices[i + 1], vertices[i + 2], vertices[i], vertices[i + 1], vertices[i + 2]);
-                        triangle->normal = cross(vertices[i] - vertices[i + 1], vertices[i + 2] - vertices[i + 1]);
-                        mesh.triangles.push_back(triangle);
+                        Triangle triangle(vertices[i], vertices[i + 1], vertices[i + 2], vertices[i], vertices[i + 1], vertices[i + 2]);
+                        triangle.normal = cross(vertices[i] - vertices[i + 1], vertices[i + 2] - vertices[i + 1]);
+                        mesh->triangles.push_back(triangle);
                     }
 
                 }

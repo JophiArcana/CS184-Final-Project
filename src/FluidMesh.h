@@ -53,7 +53,7 @@ class FluidMesh {
 public:
     ~FluidMesh() {}
 
-    vector<Triangle *> triangles;
+    vector<Triangle> triangles;
 }; // struct FluidMesh
 
 

@@ -490,10 +490,10 @@ void Fluid::buildFluidMesh() {
 //                        cout << "SUCCESS" << endl;
                     }
 
-                    for (int i = 0; i <= vertices.size() - 3; i += 1) { // TODO change uv values of triangle
+                    for (int ii = 0; ii <= vertices.size() - 3; ii += 1) { // TODO change uv values of triangle
                         // i, i + 1, i + 2
-                        Triangle triangle(vertices[i], vertices[i + 1], vertices[i + 2], vertices[i], vertices[i + 1], vertices[i + 2]);
-                        triangle.normal = cross(vertices[i] - vertices[i + 1], vertices[i + 2] - vertices[i + 1]);
+                        Triangle triangle(vertices[ii], vertices[ii + 1], vertices[ii + 2], vertices[ii], vertices[ii + 1], vertices[ii + 2]);
+                        triangle.normal = cross(vertices[ii] - vertices[ii + 1], vertices[ii + 2] - vertices[ii + 1]);
                         mesh->triangles.push_back(triangle);
                     }
 

@@ -5,6 +5,8 @@
 #ifndef CLOTHSIM_FLUID_H
 #define CLOTHSIM_FLUID_H
 
+// #define MULTITHREAD true
+
 #include <random>
 #include <deque>
 #include "pointMass.h"
@@ -61,9 +63,10 @@ public:
     void simulate(double frames_per_sec, double simulation_steps,
                   const std::vector<Vector3D> &external_accelerations);
 
+    void forward_movement(const std::vector<Vector3D> &external_accelerations, double delta_t);
     void incompressibility_adjustment(int n_iter, double delta_t);
 
-    void collision_update(PointMass *pm, double delta_t);
+    void collision_update(double delta_t);
     void cell_update();
 
     std::vector<PointMass *> *grid1, *grid2;
@@ -108,7 +111,7 @@ public:
                                               const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
 
 private:
-    double KERNEL_COEFF;
+    double KERNEL_COEFF, GRAD_KERNEL_COEFF;
     double SELF_KERNEL;
     double SCORR_COEFF;
     double SELF_SCORR;

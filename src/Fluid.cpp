@@ -214,20 +214,21 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     std::vector<std::vector<double>> global_density(G_SIZE);
     for (int index = 0; index < G_SIZE; index++) {
         for (PointMass *pm: this->grid()[index]) {
-            if (!pm->collided)
+            if (!pm->collided) {
                 pm->velocity = (pm->tentative_position - pm->position) / delta_t;
+            }
             pm->position = pm->tentative_position;
 //            if (isnan(pm->tentative_position[0]) || isnan(pm->velocity[0]))
 //                throw std::runtime_error("Velocity update resulted in NaN position or velocity");
             // cout << "Final: " << pm->position << " " << pm->velocity << endl;
 //            if (pm->velocity.norm2() > vmax.norm2())
 //                vmax = pm->velocity;
-
-            global_neighbor_indices[index] = this->neighbor_indices(index);
-            global_W[index] = this->batch_W(index, global_neighbor_indices[index]);
-            global_scaled_grad_W[index] = this->batch_scaled_grad_W(index, global_neighbor_indices[index]);
-            global_density[index] = this->batch_density(global_W[index]);
         }
+        global_neighbor_indices[index] = this->neighbor_indices(index);
+        global_W[index] = this->batch_W(index, global_neighbor_indices[index]);
+        global_scaled_grad_W[index] = this->batch_scaled_grad_W(index, global_neighbor_indices[index]);
+        global_density[index] = this->batch_density(global_W[index]);
+
     }
     std::vector<std::vector<Vector3D>> global_curl_velocity = this->global_curl_velocity(global_neighbor_indices,
                                                                                          global_scaled_grad_W);
@@ -327,7 +328,7 @@ void Fluid::cell_update() {
 
 void Fluid::buildFluidMesh() {
     /** TODO: implement mesh construction */
-    vector<double> pressures = new vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
+    vector<double> pressures = vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
 
     for (int i = 0; i <= G_LENGTH; i += 1) {
         for (int j = 0; j <= G_WIDTH; j += 1) {
@@ -342,7 +343,11 @@ void Fluid::buildFluidMesh() {
     vector<int> dy = {0, 0, 1, 1, 0, 0, 1, 1};
     vector<int> dz = {0, 1, 0, 1, 0, 1, 0, 1};
 
-    vector<int> cubeBitmap = new vector<int>(G_LENGTH * G_WIDTH * G_LENGTH);
+    // probably don't need this
+    vector<int> cubeBitmap = vector<int>(G_LENGTH * G_WIDTH * G_LENGTH);
+
+    FluidMesh mesh;
+    vector<int> neighbors = {100, 010, 001};
 
     for (int i = 0; i < G_LENGTH; i += 1) {
         for (int j = 0; j < G_WIDTH; j += 1) {
@@ -354,11 +359,71 @@ void Fluid::buildFluidMesh() {
                         cubeBitmap[index] += 1 << q;
                     }
                 }
+
+                if (cubeBitmap[index] == 0 || cubeBitmap[index] == 255) { // all on one side of the surface
+                    continue;
+                }
+
+                // TODO convert into triangular mesh
+                int visited = 0;
+
+                for (int q = 0; q < 8; q += 1) {
+                    if (visited & (1 << q) != 0) { // already visited
+                        continue;
+                    }
+                    int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
+                    if (pressures[index2] > 0.0) { // TODO implement with threshold
+                        continue;
+                    }
+
+                    vector<int> queue = vector<int>(); // stores 010
+                    vector<Vector3D> vertices = vector<Vector3D>(); //
+                    queue.push_back(q);
+                    while (queue.size() > 0) {
+                        int ind = queue.pop_back();
+                        if (visited & (1 << ind) != 0) {
+                            continue;
+                        }
+                        visited &= 1 << ind;
+
+                        for (int toXor: neighbors) {
+                            int nextInd = ind ^ toXor;
+                            // buggy code!
+                            int index3 = index2 + toXor & 1 + G_WIDTH * (toXor & 2 + G_LENGTH * toXor & 4);
+                            if (pressures[index3] > 0.0) { // TODO implement with threshold
+                                // vertex on edge
+                                // edges.push_back(ind << 3 | nextInd);
+                                double pressure1 = pressures[index2];
+                                double pressure2 = pressures[index3];
+                                double t = pressure2 / (pressure2 - pressure1);
+                                Vector3D point = Vector3D(i, j, k);
+                                point[0] += t * ((ind & 4) >> 2) + (1 - t) * ((nextInd & 4) >> 2);
+                                point[1] += t * ((ind & 2) >> 1) + (1 - t) * ((nextInd & 2) >> 1);
+                                point[2] += t * ((ind & 1) >> 0) + (1 - t) * ((nextInd & 1) >> 0);
+                                vertices.push_back(point);
+                            } else {
+                                queue.push_back(nextInd);
+                            }
+                        }
+                    }
+                    // convert vertices into a mesh
+
+                    if (vertices.size() < 3) {
+                        cout << "ERROR" << endl;
+                    }
+
+                    for (int i = 0; i <= vertices.size() - 3; i += 1) { // TODO change uv values of triangle
+                        // i, i + 1, i + 2
+                        Triangle triangle = Triangle(&vertices[i], &vertices[i + 1], &vertices[i + 2], vertices[i], vertices[i + 1], vertices[i + 2]);
+                        mesh.triangles.push_back(&triangle);
+                    }
+
+                }
             }
         }
     }
 
-    // TODO convert into triangular mesh
+
 }
 
 

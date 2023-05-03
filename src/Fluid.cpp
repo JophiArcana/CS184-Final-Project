@@ -77,7 +77,7 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     std::uniform_real_distribution<double> uniform_dist(0.0, 1.0);
 
     for (int i = 0; i < nParticles; i += 1) {
-        Vector3D position = Vector3D(LENGTH * uniform_dist(gen), WIDTH * uniform_dist(gen), HEIGHT * uniform_dist(gen));
+        Vector3D position = Vector3D(LENGTH * uniform_dist(gen), WIDTH * uniform_dist(gen), HEIGHT * (0.5 + uniform_dist(gen)));
         Vector3D velocity = Vector3D(norm_dist(gen), norm_dist(gen), norm_dist(gen));
         PointMass *pm = new PointMass(position, velocity, false);
         this->list.push_back(pm);
@@ -132,11 +132,6 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     double start_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
 
-//    int n_iter = 3;
-//    for (int _ = 0; _ < n_iter; _++) {
-//        this->forward_movement(external_accelerations, delta_t / n_iter);
-//        this->incompressibility_adjustment(1, 1, delta_t / n_iter);
-//    }
     /** Predicted movement */
     this->forward_movement(external_accelerations, delta_t);
     // cout << "Movement prediction done" << endl;
@@ -148,8 +143,8 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     /** Velocity updates */
     std::vector<std::vector<int>> global_neighbor_indices(G_SIZE);
     std::vector<std::vector<std::vector<double>>> global_W(G_SIZE);
-//    std::vector<std::vector<std::vector<Vector3D>>> global_scaled_grad_W(G_SIZE);
-//    std::vector<std::vector<double>> global_density(G_SIZE);
+    std::vector<std::vector<std::vector<Vector3D>>> global_scaled_grad_W(G_SIZE);
+    std::vector<std::vector<double>> global_density(G_SIZE);
 #ifdef MULTITHREAD
     auto velocity_update = [&](int thread_num) {
         for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
@@ -161,10 +156,9 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
                     pm->velocity = (pm->tentative_position - pm->position) / delta_t;
                 pm->position = pm->tentative_position;
             }
-//            global_neighbor_indices[index] = this->neighbor_indices(index);
-//            global_W[index] = this->batch_W(index, global_neighbor_indices[index]);
-//            global_scaled_grad_W[index] = this->batch_scaled_grad_W(index, global_neighbor_indices[index]);
-//            global_density[index] = this->batch_density(global_W[index]);
+            global_W[index] = this->batch_W(index);
+            global_scaled_grad_W[index] = this->batch_scaled_grad_W(index);
+            global_density[index] = this->batch_density(global_W[index]);
         }
 #ifdef MULTITHREAD
     };
@@ -176,43 +170,42 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
         thread.join();
     }
 #endif
-//    std::vector<std::vector<Vector3D>> global_curl_velocity = this->global_curl_velocity(global_neighbor_indices,
-//                                                                                         global_scaled_grad_W);
-//    std::vector<std::vector<double>> global_normalized_curl_velocity_norm(G_SIZE);
-//    for (int index = 0; index < G_SIZE; index++) {
-//        size_t n = this->grid()[index].size();
-//        global_normalized_curl_velocity_norm[index] = std::vector<double>(n);
-//        for (int i = 0; i < n; i++) {
-//            global_normalized_curl_velocity_norm[index][i] =
-//                    global_curl_velocity[index][i].norm() / (global_density[index][i] * global_density[index][i]);
-//        }
-//    }
-//    std::vector<std::vector<Vector3D>> global_normalized_grad_norm_curl_velocity = this->global_normalized_grad_norm_curl_velocity(
-//            global_neighbor_indices, global_normalized_curl_velocity_norm, global_scaled_grad_W);
-//
-//#ifdef MULTITHREAD
-//    auto vorticity_update = [&](int thread_num) {
-//        for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
-//#else
-//        for (int index = 0; index < G_SIZE; index++) {
-//#endif
-//            const std::vector<PointMass *> &cell = this->grid()[index];
-//            size_t n = cell.size();
-//            for (int i = 0; i < n; i++) {
-//                Vector3D vorticity_acc = VORTICITY_EPS * cross(global_normalized_grad_norm_curl_velocity[index][i],
-//                                                               global_curl_velocity[index][i]);
-//                cell[i]->velocity += delta_t * vorticity_acc;
-//            }
-//        }
-//#ifdef MULTITHREAD
-//    };
-//    for (int thread_num = 0; thread_num < N_THREADS; thread_num++) {
-//        threads[thread_num] = std::thread(vorticity_update, thread_num);
-//    }
-//    for (auto &thread: threads) {
-//        thread.join();
-//    }
-//#endif
+    std::vector<std::vector<Vector3D>> global_curl_velocity = this->global_curl_velocity(global_scaled_grad_W);
+    std::vector<std::vector<double>> global_normalized_curl_velocity_norm(G_SIZE);
+    for (int index = 0; index < G_SIZE; index++) {
+        size_t n = this->grid()[index].size();
+        global_normalized_curl_velocity_norm[index] = std::vector<double>(n);
+        for (int i = 0; i < n; i++) {
+            global_normalized_curl_velocity_norm[index][i] =
+                    global_curl_velocity[index][i].norm() / (global_density[index][i] * global_density[index][i]);
+        }
+    }
+    std::vector<std::vector<Vector3D>> global_normalized_grad_norm_curl_velocity = this->global_normalized_grad_norm_curl_velocity(
+            global_normalized_curl_velocity_norm, global_scaled_grad_W);
+
+#ifdef MULTITHREAD
+    auto vorticity_update = [&](int thread_num) {
+        for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
+#else
+        for (int index = 0; index < G_SIZE; index++) {
+#endif
+            const std::vector<PointMass *> &cell = this->grid()[index];
+            size_t n = cell.size();
+            for (int i = 0; i < n; i++) {
+                Vector3D vorticity_acc = VORTICITY_EPS * cross(global_normalized_grad_norm_curl_velocity[index][i],
+                                                               global_curl_velocity[index][i]);
+                cell[i]->velocity += delta_t * vorticity_acc;
+            }
+        }
+#ifdef MULTITHREAD
+    };
+    for (int thread_num = 0; thread_num < N_THREADS; thread_num++) {
+        threads[thread_num] = std::thread(vorticity_update, thread_num);
+    }
+    for (auto &thread: threads) {
+        thread.join();
+    }
+#endif
 
     // cout << max_vorticity_acc << endl;
 
@@ -332,8 +325,6 @@ void Fluid::incompressibility_adjustment(int n_iter, double step_size) {
                 global_scaled_grad_W
         );
 
-        Vector3D dp_max(0);
-        double lambda_max, scorr_max;
 #ifdef MULTITHREAD
         auto position_update = [&](int thread_num) {
             for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
@@ -349,16 +340,13 @@ void Fluid::incompressibility_adjustment(int n_iter, double step_size) {
                 for (int i = 0; i < n; i++) {
                     Vector3D scorr_displacement(0);
                     int j = 0;
-                    double total_lambda = 0, total_scorr = 0;
                     for (int neighbor_index: neighbor_indices) {
                         const std::vector<PointMass *> &neighbors = this->grid()[neighbor_index];
                         for (int dj = 0; dj < this->grid()[neighbor_index].size(); dj++) {
-                            // cout << (global_lambda[index][i] + global_lambda[neighbor_index][dj]) << ", " << global_scorr[index][i][j] << endl;
                             scorr_displacement += global_scorr[index][i][j] * scaled_grad_W[i][j];
                         }
                         j += neighbors.size();
                     }
-                    // cout << total_lambda << ", " << total_scorr << endl;
                     cell[i]->tentative_position += step_size * (global_lambda_displacement[index][i] + scorr_coeff * scorr_displacement);
                 }
             }
@@ -703,8 +691,6 @@ std::vector<double> Fluid::batch_density(const std::vector<std::vector<double>> 
 std::vector<std::vector<Vector3D>> Fluid::global_lambda_displacement(const std::vector<std::vector<double>> &global_density,
                                                                      const std::vector<std::vector<std::vector<double>>> &global_W,
                                                                      const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const {
-    double coeff = -1 / (PARTICLE_MASS * GRAD_KERNEL_COEFF);
-
     std::vector<std::vector<Vector3D>> result(G_SIZE);
 #ifdef MULTITHREAD
     auto compute_lambda = [&](int thread_num) {
@@ -766,14 +752,11 @@ std::vector<std::vector<double>> Fluid::batch_scorr(const std::vector<std::vecto
         result[i] = std::vector<double>(0);
         for (double w: W[i]) {
             result[i].push_back(this->SCORR_COEFF * std::pow(w, 4));
-//            if (isnan(result[i][j]))
-//                throw std::runtime_error("scorr produced NaN value");
             if (isnan(result[i][result[i].size() - 1])) {
                 throw std::runtime_error("scorr produced NaN value");
             }
 
         }
-//        result[i][i] = this->SELF_SCORR;
     }
     return result;
 }
@@ -849,7 +832,6 @@ Fluid::global_normalized_grad_norm_curl_velocity(const std::vector<std::vector<d
                         result[index][i] += (normalized_curl_velocity_norm[i] +
                                              global_normalized_curl_velocity_norm[neighbor_index][dj]) *
                                             scaled_grad_W[i][j + dj];
-                        // cout << (cell[i]->tentative_position - this->grid()[neighbor_index][dj]->tentative_position).norm() / this->SMOOTHING_RADIUS << endl;
                     }
                     j += neighbors.size();
                 }

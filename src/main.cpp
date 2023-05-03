@@ -494,7 +494,7 @@ int main(int argc, char **argv) {
     }
 
     FluidParameters fp = Fluid::WATER;
-    Fluid fluid(1, 1, 1, 5000, fp);
+    Fluid fluid(2, 2, 1, 5000, fp);
     vector<CollisionObject *> objects;
 
     bool success = loadObjectsFromFile(file_to_load_from, &fluid, &fp, &objects, sphere_num_lat, sphere_num_lon);

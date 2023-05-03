@@ -238,17 +238,13 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     }
 #endif
 
-<<<<<<< HEAD
 
     // cout << "Velocity update vmax " << vmax << endl;
     // cout << "Velocity updates done" << endl;
 
     // this->debugFluidMesh();
     this->buildFluidMesh();
-=======
-    // this->buildFluidMesh();
-    this->debugFluidMesh();
->>>>>>> f2273086abc6a9b0ffa1bece96cfa81e19e3dc82
+
 
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
@@ -421,74 +417,79 @@ void Fluid::buildFluidMesh() {
     /** TODO: implement mesh construction */
     mesh->triangles.clear();
 
-    vector<double> pressures = vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
+    int SUBDIVISION = 4;
 
-    for (int i = 0; i <= G_LENGTH; i += 1) {
-        for (int j = 0; j <= G_WIDTH; j += 1) {
-            for (int k = 0; k <= G_HEIGHT; k += 1) {
-                int index = k + (G_WIDTH + 1) * (j + (G_LENGTH + 1) * i);
-                pressures[index] = 0.0;
-            }
-        }
-    }
+//    vector<double> pressures = vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
+//
+//    for (int i = 0; i <= G_LENGTH; i += 1) {
+//        for (int j = 0; j <= G_WIDTH; j += 1) {
+//            for (int k = 0; k <= G_HEIGHT; k += 1) {
+//                int index = k + (G_WIDTH + 1) * (j + (G_LENGTH + 1) * i);
+//                pressures[index] = 0.0;
+//            }
+//        }
+//    }
 
     vector<int> dx = {0, 0, 0, 0, 1, 1, 1, 1};
     vector<int> dy = {0, 0, 1, 1, 0, 0, 1, 1};
     vector<int> dz = {0, 1, 0, 1, 0, 1, 0, 1};
 
-    for (int i = 0; i < G_LENGTH; i += 1) {
-        for (int j = 0; j < G_WIDTH; j += 1) {
-            for (int k = 0; k < G_HEIGHT; k += 1) {
-                int index = k + G_WIDTH * (j + G_LENGTH * i);
-                vector<PointMass *> points = this->grid()[index];
-                for (int q = 0; q < 8; q += 1) {
-                    Vector3D pos = Vector3D(i + dx[q], j + dy[q], k + dz[q]);
-                    int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
-                    for (PointMass *pm: points) {
-                        pressures[index2] += 1 / max(0.01, (pos - pm->position).norm());
-                    }
-                }
-            }
-        }
-    }
+//    for (int i = 0; i < G_LENGTH; i += 1) {
+//        for (int j = 0; j < G_WIDTH; j += 1) {
+//            for (int k = 0; k < G_HEIGHT; k += 1) {
+//                int index = k + G_WIDTH * (j + G_LENGTH * i);
+//                vector<PointMass *> points = this->grid()[index];
+//                for (int q = 0; q < 8; q += 1) {
+//                    Vector3D pos = Vector3D(i + dx[q], j + dy[q], k + dz[q]);
+//                    int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
+//                    for (PointMass *pm: points) {
+//                        pressures[index2] += 1 / max(0.01, (pos - pm->position).norm());
+//                    }
+//                }
+//            }
+//        }
+//    }
 
     // probably don't need this
-    vector<int> cubeBitmap = vector<int>(G_SIZE);
+    // vector<int> cubeBitmap = vector<int>(G_SIZE);
 
     vector<int> neighbors = {4, 2, 1};
 
     // TODO change value
-    double THRESHOLD = 8;
+    double THRESHOLD = 55;
 
-    for (int i = 0; i < G_LENGTH; i += 1) {
-        for (int j = 0; j < G_WIDTH; j += 1) {
-            for (int k = 0; k < G_HEIGHT; k += 1) {
-//                cout << i << " " << j << " " << k << endl;
-                int index = k + G_WIDTH * (j + G_LENGTH * i);
-                cubeBitmap[index] = 0;
+    for (int i = 0; i < G_LENGTH * SUBDIVISION; i += 1) {
+        for (int j = 0; j < G_WIDTH * SUBDIVISION; j += 1) {
+            for (int k = 0; k < G_HEIGHT * SUBDIVISION; k += 1) {
+                int x = i / SUBDIVISION;
+                int y = j / SUBDIVISION;
+                int z = k / SUBDIVISION;
+                int index = z + G_HEIGHT * (y + G_WIDTH * x);
+                int bitmap = 0;
+                vector<double> pressures = vector<double>(8);
                 for (int q = 0; q < 8; q += 1) {
-                    int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
-                    // cout << pressures[index2] << endl;
-                    if (pressures[index2] < THRESHOLD) {
-                        cubeBitmap[index] |= (1 << q);
+                    Vector3D pos = Vector3D(i * 1.0 / SUBDIVISION + dx[q], j * 1.0 / SUBDIVISION + dy[q], k * 1.0 / SUBDIVISION + dz[q]);
+                    for (PointMass *pm: this->grid()[index]) { // TODO include pointmasses in neighboring cells
+                        pressures[q] += 1 / max(0.01, (pm->position / CELL_SIZE - pos).norm());
                     }
                 }
-                // cout << " " << endl;
+                for (int q = 0; q < 8; q += 1) {
+                    if (pressures[q] < THRESHOLD) {
+                        bitmap |= (1 << q);
+                    }
+                }
 
-                if (cubeBitmap[index] == 0 || cubeBitmap[index] == 255) { // all on one side of the surface
+                if (bitmap == 0 || bitmap == 255) { // all on one side of the surface
                     continue;
                 }
 
                 int visited = 0;
 
-//                cout << cubeBitmap[index] << endl;
-
                 for (int q = 0; q < 8; q += 1) {
                     if ((visited & (1 << q)) != 0) { // already visited
                         continue;
                     }
-                    int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
-                    if (pressures[index2] > THRESHOLD) {
+                    if (pressures[q] > THRESHOLD) {
                         continue;
                     }
 
@@ -509,24 +510,18 @@ void Fluid::buildFluidMesh() {
 
                         for (int toXor: neighbors) {
                             int nextInd = ind ^ toXor;
-//                            if (nextInd == 3) {
-//                                cout << ind << " " << toXor << " " << nextInd << endl;
-//                            }
-                            int index3 = index + (nextInd & 1) +
-                                         G_WIDTH * (((nextInd & 2) >> 1) + G_LENGTH * ((nextInd & 4) >> 2));
-                            if (pressures[index3] > THRESHOLD) {
+                            if (pressures[nextInd] > THRESHOLD) {
                                 // vertex on edge
-                                // edges.push_back(ind << 3 | nextInd);
-                                double pressure1 = pressures[index2] - THRESHOLD;
-                                double pressure2 = pressures[index3] - THRESHOLD;
+                                double pressure1 = pressures[ind] - THRESHOLD;
+                                double pressure2 = pressures[nextInd] - THRESHOLD;
                                 double t = pressure2 / (pressure2 - pressure1);
                                 Vector3D point = Vector3D(i, j, k);
-                                point[0] += t * ((ind & 4) >> 2) + (1 - t) * ((nextInd & 4) >> 2);
-                                point[1] += t * ((ind & 2) >> 1) + (1 - t) * ((nextInd & 2) >> 1);
-                                point[2] += t * ((ind & 1) >> 0) + (1 - t) * ((nextInd & 1) >> 0);
-                                point[0] *= LENGTH / G_LENGTH;
-                                point[1] *= WIDTH / G_WIDTH;
-                                point[2] *= HEIGHT / G_HEIGHT;
+                                point[0] += t * dx[ind] + (1 - t) * dx[nextInd];
+                                point[1] += t * dy[ind] + (1 - t) * dy[nextInd];
+                                point[2] += t * dz[ind] + (1 - t) * dz[nextInd];
+                                point[0] *= LENGTH / G_LENGTH / SUBDIVISION;
+                                point[1] *= WIDTH / G_WIDTH / SUBDIVISION;
+                                point[2] *= HEIGHT / G_HEIGHT / SUBDIVISION;
                                 vertices.push_back(point);
                             } else {
                                 queue.push_back(nextInd);

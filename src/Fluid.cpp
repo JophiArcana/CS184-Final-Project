@@ -487,7 +487,7 @@ void Fluid::buildFluidMesh() {
 //                                cout << ind << " " << toXor << " " << nextInd << endl;
 //                            }
                             int index3 = index + (nextInd & 1) +
-                                         G_WIDTH * (((nextInd & 2) >> 1) + G_LENGTH * (nextInd & 4) >> 2);
+                                         G_WIDTH * (((nextInd & 2) >> 1) + G_LENGTH * ((nextInd & 4) >> 2));
                             if (pressures[index3] > THRESHOLD) {
                                 // vertex on edge
                                 // edges.push_back(ind << 3 | nextInd);

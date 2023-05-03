@@ -246,8 +246,8 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     // cout << "Velocity update vmax " << vmax << endl;
     // cout << "Velocity updates done" << endl;
 
-    // this->buildFluidMesh();
-    this->debugFluidMesh();
+    // this->debugFluidMesh();
+    this->buildFluidMesh();
 
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
@@ -444,7 +444,7 @@ void Fluid::buildFluidMesh() {
                     Vector3D pos = Vector3D(i + dx[q], j + dy[q], k + dz[q]);
                     int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
                     for (PointMass *pm: points) {
-                        pressures[index2] += 1 / min(0.01, (pos - pm->position).norm());
+                        pressures[index2] += 1 / max(0.01, (pos - pm->position).norm());
                     }
                 }
             }
@@ -457,7 +457,7 @@ void Fluid::buildFluidMesh() {
     vector<int> neighbors = {4, 2, 1};
 
     // TODO change value
-    double THRESHOLD = 0.1;
+    double THRESHOLD = 8;
 
     for (int i = 0; i < G_LENGTH; i += 1) {
         for (int j = 0; j < G_WIDTH; j += 1) {
@@ -467,10 +467,12 @@ void Fluid::buildFluidMesh() {
                 cubeBitmap[index] = 0;
                 for (int q = 0; q < 8; q += 1) {
                     int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
+                    // cout << pressures[index2] << endl;
                     if (pressures[index2] < THRESHOLD) {
                         cubeBitmap[index] |= (1 << q);
                     }
                 }
+                // cout << " " << endl;
 
                 if (cubeBitmap[index] == 0 || cubeBitmap[index] == 255) { // all on one side of the surface
                     continue;
@@ -514,8 +516,8 @@ void Fluid::buildFluidMesh() {
                             if (pressures[index3] > THRESHOLD) {
                                 // vertex on edge
                                 // edges.push_back(ind << 3 | nextInd);
-                                double pressure1 = pressures[index2];
-                                double pressure2 = pressures[index3];
+                                double pressure1 = pressures[index2] - THRESHOLD;
+                                double pressure2 = pressures[index3] - THRESHOLD;
                                 double t = pressure2 / (pressure2 - pressure1);
                                 Vector3D point = Vector3D(i, j, k);
                                 point[0] += t * ((ind & 4) >> 2) + (1 - t) * ((nextInd & 4) >> 2);
@@ -534,16 +536,16 @@ void Fluid::buildFluidMesh() {
 
                     if (vertices.size() < 3) {
 //                        cout << "ERROR " << vertices.size() << endl;
-                        continue;
+//                        continue;
                     } else {
-//                        cout << "SUCCESS" << endl;
+                        // cout << "SUCCESS" << endl;
                     }
 
                     for (int ii = 0; ii <= vertices.size() - 3; ii += 1) { // TODO change uv values of triangle
-                        // i, i + 1, i + 2
+                        // 0, ii + 1, ii + 2
                         Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],
                                           vertices[ii + 1], vertices[ii + 2]);
-                        mesh->triangles.push_back(triangle);
+                        mesh->triangles.emplace_back(triangle);
                     }
 
                 }

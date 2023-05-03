@@ -375,6 +375,8 @@ void ClothSimulator::drawNormals(GLShader &shader) {
     // int num_tris = cloth->clothMesh->triangles.size();
     int num_tris = fluid->mesh->triangles.size();
 
+    // cout << num_tris << endl;
+
     MatrixXf positions(4, num_tris * 3);
     MatrixXf normals(4, num_tris * 3);
 

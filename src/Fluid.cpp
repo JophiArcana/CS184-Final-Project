@@ -15,7 +15,7 @@
 #endif
 
 #define RELAXATION_EPS 0.00001
-#define VORTICITY_EPS 0.001
+#define VORTICITY_EPS 0.0005
 #define XSPH_EPS 0.1
 
 
@@ -29,7 +29,7 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     double true_num_particles = VOLUME * PARAMS.density * 6.022E23 / PARAMS.molar_mass;
     double ratio = true_num_particles / nParticles;
 
-    this->SMOOTHING_RADIUS = 1.53 * PARAMS.average_distance * std::cbrt(ratio);
+    this->SMOOTHING_RADIUS = 1.8 * PARAMS.average_distance * std::cbrt(ratio);
     this->PARTICLE_MASS = VOLUME * PARAMS.density / nParticles;
 
     cout << this->SMOOTHING_RADIUS << endl;
@@ -77,7 +77,7 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     std::uniform_real_distribution<double> uniform_dist(0.0, 1.0);
 
     for (int i = 0; i < nParticles; i += 1) {
-        Vector3D position = Vector3D(LENGTH * uniform_dist(gen), WIDTH * uniform_dist(gen), HEIGHT * (0.5 + uniform_dist(gen)));
+        Vector3D position = Vector3D(LENGTH * (0.5 * (1 - std::sqrt(0.5)) + std::sqrt(0.5) * uniform_dist(gen)), WIDTH * (0.5 * (1 - std::sqrt(0.5)) + std::sqrt(0.5) * uniform_dist(gen)), HEIGHT * (2 * uniform_dist(gen)));
         Vector3D velocity = Vector3D(norm_dist(gen), norm_dist(gen), norm_dist(gen));
         PointMass *pm = new PointMass(position, velocity, false);
         this->list.push_back(pm);
@@ -85,14 +85,6 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     }
     FluidMesh *fmesh = new FluidMesh();
     this->mesh = fmesh;
-
-//    double average_density = 0;
-//    for (int index = 0; index < G_SIZE; index++) {
-//        std::vector<double> density = this->batch_density(this->batch_W(index, this->neighbor_indices(index)));
-//        average_density = std::accumulate(density.begin(), density.end(), average_density);
-//    }
-//    average_density /= NUM_PARTICLES;
-//    cout << "Average starting density " << average_density << endl;
 
     this->global_neighbor_indices = std::vector<std::vector<int>>(G_SIZE);
     for (int index = 0; index < G_SIZE; index++) {
@@ -106,6 +98,14 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
             }
         }
     }
+
+    double average_density = 0;
+    for (int index = 0; index < G_SIZE; index++) {
+        std::vector<double> density = this->batch_density(this->batch_W(index));
+        average_density = std::accumulate(density.begin(), density.end(), average_density);
+    }
+    average_density /= NUM_PARTICLES;
+    cout << "Average starting density " << average_density << endl;
 }
 
 inline std::vector<PointMass *> *Fluid::grid() const {
@@ -134,11 +134,9 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
 
     /** Predicted movement */
     this->forward_movement(external_accelerations, delta_t);
-    // cout << "Movement prediction done" << endl;
 
     /** Position updates */
-    this->incompressibility_adjustment(1, 0.2);
-    // cout << "Position updates done" << endl;
+    this->incompressibility_adjustment(1, 0.15);
 
     /** Velocity updates */
     std::vector<std::vector<int>> global_neighbor_indices(G_SIZE);
@@ -207,8 +205,6 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     }
 #endif
 
-    // cout << max_vorticity_acc << endl;
-
     double coeff = XSPH_EPS * VOLUME / NUM_PARTICLES;
 #ifdef MULTITHREAD
     auto viscosity_update = [&](int thread_num) {
@@ -242,12 +238,17 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     }
 #endif
 
+<<<<<<< HEAD
 
     // cout << "Velocity update vmax " << vmax << endl;
     // cout << "Velocity updates done" << endl;
 
     // this->debugFluidMesh();
     this->buildFluidMesh();
+=======
+    // this->buildFluidMesh();
+    this->debugFluidMesh();
+>>>>>>> f2273086abc6a9b0ffa1bece96cfa81e19e3dc82
 
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();

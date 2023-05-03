@@ -507,8 +507,8 @@ int main(int argc, char **argv) {
     createGLContexts();
 
     // Initialize the Cloth object
-    // fluid.buildFluidMesh();
-    fluid.debugFluidMesh();
+    fluid.buildFluidMesh();
+    // fluid.debugFluidMesh();
 
     // Initialize the ClothSimulator object
     app = new ClothSimulator(project_root, screen);

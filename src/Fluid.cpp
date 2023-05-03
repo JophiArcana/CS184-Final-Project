@@ -245,8 +245,8 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     // cout << "Velocity update vmax " << vmax << endl;
     // cout << "Velocity updates done" << endl;
 
-    // this->buildFluidMesh();
-    this->debugFluidMesh();
+    this->buildFluidMesh();
+    // this->debugFluidMesh();
 
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
             chrono::system_clock::now().time_since_epoch()).count();
@@ -390,6 +390,7 @@ void Fluid::cell_update() {
 
 void Fluid::buildFluidMesh() {
     /** TODO: implement mesh construction */
+    // cout << "hi" << endl;
     if (this->mesh == nullptr) {
         this->mesh = new FluidMesh();
     } else {
@@ -517,7 +518,7 @@ void Fluid::buildFluidMesh() {
 
                     for (int ii = 0; ii <= vertices.size() - 3; ii += 1) { // TODO change uv values of triangle
                         // i, i + 1, i + 2
-                        Triangle triangle(vertices[ii], vertices[ii + 1], vertices[ii + 2], vertices[ii],
+                        Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],
                                           vertices[ii + 1], vertices[ii + 2]);
                         mesh->triangles.push_back(triangle);
                     }

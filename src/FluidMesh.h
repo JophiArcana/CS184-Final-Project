@@ -58,7 +58,10 @@ public:
     ~FluidMesh() {}
 
     std::vector<Triangle> triangles;
+    std::vector<int> pairs;
     std::mutex mtx;
+
+
 
 }; // struct FluidMesh
 

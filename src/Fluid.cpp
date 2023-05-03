@@ -522,7 +522,7 @@ void Fluid::buildFluidMesh() {
 //                                cout << ind << " " << toXor << " " << nextInd << endl;
 //                            }
                             int index3 = index + (nextInd & 1) +
-                                         G_WIDTH * (((nextInd & 2) >> 1) + G_LENGTH * (nextInd & 4) >> 2);
+                                         G_WIDTH * (((nextInd & 2) >> 1) + G_LENGTH * ((nextInd & 4) >> 2));
                             if (pressures[index3] > THRESHOLD) {
                                 // vertex on edge
                                 // edges.push_back(ind << 3 | nextInd);
@@ -553,7 +553,7 @@ void Fluid::buildFluidMesh() {
 
                     for (int ii = 0; ii <= vertices.size() - 3; ii += 1) { // TODO change uv values of triangle
                         // i, i + 1, i + 2
-                        Triangle triangle(vertices[ii], vertices[ii + 1], vertices[ii + 2], vertices[ii],
+                        Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],
                                           vertices[ii + 1], vertices[ii + 2]);
                         mesh->triangles.push_back(triangle);
                     }

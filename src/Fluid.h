@@ -5,7 +5,7 @@
 #ifndef CLOTHSIM_FLUID_H
 #define CLOTHSIM_FLUID_H
 
-// #define MULTITHREAD true
+#define MULTITHREAD true
 
 #include <random>
 #include <deque>
@@ -58,7 +58,7 @@ public:
     std::vector<PointMass *> *grid() const;
     int get_index(const Vector3D &pos) const;
     std::vector<PointMass *> &get_cell(const Vector3D &pos) const;
-    std::vector<int> neighbor_indices(int index) const;
+    std::vector<std::vector<int>> global_neighbor_indices;
 
     void simulate(double frames_per_sec, double simulation_steps,
                   const std::vector<Vector3D> &external_accelerations);
@@ -95,21 +95,21 @@ public:
     double W(PointMass *pi, PointMass *pj) const;
     Vector3D scaled_grad_W(PointMass *pi, PointMass *pj) const;
 
-    std::vector<std::vector<double>> batch_W(int index, const std::vector<int> &neighbor_indices) const;
-    std::vector<std::vector<Vector3D>> batch_scaled_grad_W(int index, const std::vector<int> &neighbor_indices) const;
+    std::vector<std::vector<double>> batch_W(int index) const;
+    std::vector<std::vector<Vector3D>> batch_scaled_grad_W(int index) const;
 
     std::vector<double> batch_density(const std::vector<std::vector<double>> &W) const;
 
-    std::vector<double>
-    batch_lambda(const std::vector<double> &density, const std::vector<std::vector<Vector3D>> &scaled_grad_W) const;
+    std::vector<std::vector<Vector3D>>
+    global_lambda_displacement(const std::vector<std::vector<double>> &global_density,
+                               const std::vector<std::vector<std::vector<double>>> &global_W,
+                               const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
     std::vector<std::vector<double>> batch_scorr(const std::vector<std::vector<double>> &W) const;
 
     std::vector<std::vector<Vector3D>>
-    global_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
-                         const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
+    global_curl_velocity(const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
     std::vector<std::vector<Vector3D>>
-    global_normalized_grad_norm_curl_velocity(const std::vector<std::vector<int>> &global_neighbor_indices,
-                                              const std::vector<std::vector<double>> &global_normalized_curl_velocity_norm,
+    global_normalized_grad_norm_curl_velocity(const std::vector<std::vector<double>> &global_normalized_curl_velocity_norm,
                                               const std::vector<std::vector<std::vector<Vector3D>>> &global_scaled_grad_W) const;
 
 private:

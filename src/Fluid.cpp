@@ -72,12 +72,12 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     std::mt19937 gen(random_device());
     // std of water velocity is approx 642.50364 m/s, average velocity over #ratio particles
     // negligible, may remove random sampling completely
-    std::normal_distribution<double> norm_dist_gen(0, params.rms_velocity / ratio);
+    std::normal_distribution<double> norm_dist(0, params.rms_velocity / ratio);
+    std::uniform_real_distribution<double> uniform_dist(0.0, 1.0);
 
     for (int i = 0; i < nParticles; i += 1) {
-        Vector3D position = Vector3D(LENGTH * std::rand() / RAND_MAX, WIDTH * std::rand() / RAND_MAX,
-                                     HEIGHT * std::rand() / RAND_MAX);
-        Vector3D velocity = Vector3D(norm_dist_gen(gen), norm_dist_gen(gen), norm_dist_gen(gen));
+        Vector3D position = Vector3D(LENGTH * uniform_dist(gen), WIDTH * uniform_dist(gen), HEIGHT * uniform_dist(gen));
+        Vector3D velocity = Vector3D(norm_dist(gen), norm_dist(gen), norm_dist(gen));
         PointMass *pm = new PointMass(position, velocity, false);
         this->list.push_back(pm);
         this->get_cell(position).push_back(pm);
@@ -134,7 +134,7 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     // cout << "Movement prediction done" << endl;
 
     /** Position updates */
-    this->incompressibility_adjustment(1, 0.2, delta_t);
+    this->incompressibility_adjustment(1, 0.2);
     // cout << "Position updates done" << endl;
 
     /** Velocity updates */
@@ -146,7 +146,7 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     auto velocity_update = [&](int thread_num) {
         for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
 #else
-            for (int index = 0; index < G_SIZE; index++) {
+        for (int index = 0; index < G_SIZE; index++) {
 #endif
             for (PointMass *pm: this->grid()[index]) {
                 if (!pm->collided)
@@ -186,7 +186,7 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
 //    auto vorticity_update = [&](int thread_num) {
 //        for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
 //#else
-//            for (int index = 0; index < G_SIZE; index++) {
+//        for (int index = 0; index < G_SIZE; index++) {
 //#endif
 //            const std::vector<PointMass *> &cell = this->grid()[index];
 //            size_t n = cell.size();
@@ -213,7 +213,7 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
     auto viscosity_update = [&](int thread_num) {
         for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
 #else
-            for (int index = 0; index < G_SIZE; index++) {
+        for (int index = 0; index < G_SIZE; index++) {
 #endif
             const std::vector<PointMass *> &cell = this->grid()[index];
             size_t n = cell.size();
@@ -263,7 +263,7 @@ void Fluid::forward_movement(const std::vector<Vector3D> &external_accelerations
     auto movement_update = [&](int thread_num) {
         for (int i = thread_num; i < NUM_PARTICLES; i += N_THREADS) {
 #else
-            for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < NUM_PARTICLES; i++) {
 #endif
             PointMass *pm = this->list[i];
             pm->velocity += delta_t * total_external_acceleration;
@@ -285,45 +285,76 @@ void Fluid::forward_movement(const std::vector<Vector3D> &external_accelerations
 }
 
 
-void Fluid::incompressibility_adjustment(int n_iter, double timestep, double delta_t) {
+void Fluid::incompressibility_adjustment(int n_iter, double step_size) {
     /** Position updates */
-    double coeff = timestep * GRAD_KERNEL_COEFF / PARAMS.density;
+    double coeff = step_size * PARTICLE_MASS * GRAD_KERNEL_COEFF / PARAMS.density;
     for (int _ = 0; _ < n_iter; _++) {
+        std::vector<std::vector<int>> global_neighbor_indices(G_SIZE);
+        std::vector<std::vector<std::vector<Vector3D>>> global_scaled_grad_W(G_SIZE);
+        std::vector<std::vector<double>> global_lambda(G_SIZE);
+        std::vector<std::vector<std::vector<double>>> global_scorr(G_SIZE);
+
 #ifdef MULTITHREAD
-        auto position_update = [&](int thread_num) {
+        auto compute_lambda_scorr = [&](int thread_num) {
             for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
 #else
-                for (int index = 0; index < G_SIZE; index++) {
+            for (int index = 0; index < G_SIZE; index++) {
 #endif
-                const std::vector<PointMass *> &cell = this->grid()[index];
-                if (cell.size() > 1) {
-                    size_t n = cell.size();
+                global_neighbor_indices[index] = this->neighbor_indices(index);
+                global_scaled_grad_W[index] = this->batch_scaled_grad_W(index, global_neighbor_indices[index]);
 
-                    std::vector<int> neighbor_indices = this->neighbor_indices(index);
+                std::vector<std::vector<double>> W = this->batch_W(index, global_neighbor_indices[index]);
+                std::vector<double> density = this->batch_density(W);
 
-                    std::vector<std::vector<double>> W = this->batch_W(index, neighbor_indices);
-                    std::vector<std::vector<Vector3D>> scaled_grad_W = this->batch_scaled_grad_W(index,
-                                                                                                 neighbor_indices);
-                    std::vector<double> density = this->batch_density(W);
-
-                    std::vector<double> lambda = this->batch_lambda(density, scaled_grad_W);
-                    std::vector<std::vector<double>> scorr = this->batch_scorr(W);
-
-                    for (int i = 0; i < n; i++) {
-                        PointMass *pm = cell[i];
-                        Vector3D dp(0);
-                        for (int j = 0; j < n; j++) {
-                            dp += (PARTICLE_MASS * (lambda[i] + lambda[j]) + scorr[i][j]) * scaled_grad_W[i][j];
-                        }
-                        if (coeff * dp.norm() > 0.1)
-                            cout << coeff * dp << endl;
-                        pm->tentative_position += (coeff * dp);
-                    }
-                }
+                global_lambda[index] = this->batch_lambda(density, global_scaled_grad_W[index]);
+                global_scorr[index] = this->batch_scorr(W);
             }
 #ifdef MULTITHREAD
         };
         std::thread threads[N_THREADS];
+        for (int thread_num = 0; thread_num < N_THREADS; thread_num++) {
+            threads[thread_num] = std::thread(compute_lambda_scorr, thread_num);
+        }
+        for (auto &thread: threads) {
+            thread.join();
+        }
+#endif
+
+        Vector3D dp_max(0);
+        double lambda_max, scorr_max;
+#ifdef MULTITHREAD
+        auto position_update = [&](int thread_num) {
+            for (int index = thread_num; index < G_SIZE; index += N_THREADS) {
+#else
+            for (int index = 0; index < G_SIZE; index++) {
+#endif
+                const std::vector<PointMass *> &cell = this->grid()[index];
+                size_t n = cell.size();
+
+                const std::vector<int> &neighbor_indices = global_neighbor_indices[index];
+                const std::vector<std::vector<Vector3D>> &scaled_grad_W = global_scaled_grad_W[index];
+
+                for (int i = 0; i < n; i++) {
+                    Vector3D delta_p(0);
+                    int j = 0;
+                    double total_lambda = 0, total_scorr = 0;
+                    for (int neighbor_index: neighbor_indices) {
+                        const std::vector<PointMass *> &neighbors = this->grid()[neighbor_index];
+                        for (int dj = 0; dj < this->grid()[neighbor_index].size(); dj++) {
+                            // cout << (global_lambda[index][i] + global_lambda[neighbor_index][dj]) << ", " << global_scorr[index][i][j] << endl;
+                            delta_p += (global_lambda[index][i] + global_lambda[neighbor_index][dj] +
+                                        global_scorr[index][i][j]) * scaled_grad_W[i][j];
+                            total_lambda += (global_lambda[index][i] + global_lambda[neighbor_index][dj]);
+                            total_scorr += global_scorr[index][i][j];
+                        }
+                        j += neighbors.size();
+                    }
+                    // cout << total_lambda << ", " << total_scorr << endl;
+                    cell[i]->tentative_position += (coeff * delta_p);
+                }
+            }
+#ifdef MULTITHREAD
+        };
         for (int thread_num = 0; thread_num < N_THREADS; thread_num++) {
             threads[thread_num] = std::thread(position_update, thread_num);
         }
@@ -390,11 +421,7 @@ void Fluid::cell_update() {
 
 void Fluid::buildFluidMesh() {
     /** TODO: implement mesh construction */
-    if (this->mesh == nullptr) {
-        this->mesh = new FluidMesh();
-    } else {
-        mesh->triangles.clear();
-    }
+    mesh->triangles.clear();
 
     vector<double> pressures = vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
 
@@ -530,11 +557,7 @@ void Fluid::buildFluidMesh() {
 
 
 void Fluid::debugFluidMesh() {
-    if (this->mesh == nullptr) {
-        this->mesh = new FluidMesh();
-    } else {
-        mesh->triangles.clear();
-    }
+    mesh->triangles.clear();
     Vector3D offset[4] = {
             {0.,          0.,          0.05},
             {0.,          0.04714045,  -0.01666667},
@@ -621,25 +644,6 @@ std::vector<std::vector<double>> Fluid::batch_W(int index, const std::vector<int
     size_t n = cell.size();
 
     std::vector<std::vector<double>> result(n);
-// #ifdef MULTITHREAD
-//    auto compute_W = [&](int thread_num) {
-//        for (int i = thread_num; i < n; i += N_THREADS) {
-//            result[i] = std::vector<double>(0);
-//            for (int neighbor_index: neighbor_indices) {
-//                for (PointMass *pm: this->grid()[neighbor_index]) {
-//                    result[i].push_back(this->W(cell[i], pm));
-//                }
-//            }
-//        }
-//    };
-//    std::thread threads[N_THREADS];
-//    for (int thread_num = 0; thread_num < N_THREADS; thread_num++) {
-//        threads[thread_num] = std::thread(compute_W, thread_num);
-//    }
-//    for (auto &thread : threads) {
-//        thread.join();
-//    }
-// #else
     for (int i = 0; i < n; i++) {
         result[i] = std::vector<double>(0);
         for (int neighbor_index: neighbor_indices) {
@@ -648,7 +652,6 @@ std::vector<std::vector<double>> Fluid::batch_W(int index, const std::vector<int
             }
         }
     }
-// #endif
     return result;
 }
 
@@ -659,25 +662,6 @@ Fluid::batch_scaled_grad_W(int index, const std::vector<int> &neighbor_indices) 
     size_t n = cell.size();
 
     std::vector<std::vector<Vector3D>> result(n);
-//#ifdef MULTITHREAD
-//    auto compute_grad_W = [&](int thread_num) {
-//        for (int i = thread_num; i < n; i += N_THREADS) {
-//            result[i] = std::vector<Vector3D>(0);
-//            for (int neighbor_index: neighbor_indices) {
-//                for (PointMass *pm: this->grid()[neighbor_index]) {
-//                    result[i].push_back(this->scaled_grad_W(cell[i], pm));
-//                }
-//            }
-//        }
-//    };
-//    std::thread threads[N_THREADS];
-//    for (int thread_num = 0; thread_num < N_THREADS; thread_num++) {
-//        threads[thread_num] = std::thread(compute_grad_W, thread_num);
-//    }
-//    for (auto &thread : threads) {
-//        thread.join();
-//    }
-//#else
     for (int i = 0; i < n; i++) {
         result[i] = std::vector<Vector3D>(0);
         for (int neighbor_index: neighbor_indices) {
@@ -686,7 +670,6 @@ Fluid::batch_scaled_grad_W(int index, const std::vector<int> &neighbor_indices) 
             }
         }
     }
-// #endif
     return result;
 }
 
@@ -715,14 +698,9 @@ std::vector<double> Fluid::batch_lambda(const std::vector<double> &density,
             denominator += grad_W.norm2();
             sum += grad_W;
         }
-        // cout << "Result " << i << " before large term: " << result[i] << endl;
-        // cout << scaled_grad_W[0][1] << endl;
         denominator += sum.norm2();
         result[i] = (coeff * (1 - density[i] / PARAMS.density)) / (denominator + RELAXATION_EPS);
         if (isnan(result[i])) {
-//            for (const Vector3D &grad_W: scaled_grad_W[i]) {
-//                cout << grad_W << endl;
-//            }
             cout << denominator << endl;
             cout << (coeff * (1 - density[i] / PARAMS.density)) << endl;
             throw std::runtime_error("lambda produced NaN value");
@@ -769,7 +747,7 @@ Fluid::global_curl_velocity(const std::vector<std::vector<int>> &global_neighbor
             for (int i = 0; i < n; i++) {
                 int j = 0;
                 for (int neighbor_index: neighbor_indices) {
-                    std::vector<PointMass *> neighbors = this->grid()[neighbor_index];
+                    const std::vector<PointMass *> &neighbors = this->grid()[neighbor_index];
                     for (int dj = 0; dj < neighbors.size(); dj++) {
                         result[index][i] += cross(neighbors[dj]->velocity - cell[i]->velocity,
                                                   scaled_grad_W[i][j + dj]);
@@ -815,7 +793,7 @@ Fluid::global_normalized_grad_norm_curl_velocity(const std::vector<std::vector<i
             for (int i = 0; i < n; i++) {
                 int j = 0;
                 for (int neighbor_index: neighbor_indices) {
-                    std::vector<PointMass *> neighbors = this->grid()[neighbor_index];
+                    const std::vector<PointMass *> &neighbors = this->grid()[neighbor_index];
                     for (int dj = 0; dj < neighbors.size(); dj++) {
                         result[index][i] += (normalized_curl_velocity_norm[i] +
                                              global_normalized_curl_velocity_norm[neighbor_index][dj]) *

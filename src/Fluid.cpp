@@ -893,7 +893,14 @@ void Fluid::buildFluidMesh() {
             }
         }
         // I think this can maybe be done in the "for (int toXor: neighbors)" for loop to save pressure recalculation
-        for (int ii = 0; ii <= surface_vertices.size() - 2; ii += 1) {
+        for (int vt = 0; vt <= surface_vertices.size(); vt += 1) {
+            for (int i = -1; i < 1; i++) {
+                for (int j = -1; j < 1; j++) {
+                    for (int k = -1; k < 1; k++) {
+
+                    }
+                }
+            }
             // TODO: finish this out
             // 0, ii + 1, ii + 2
             // Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],

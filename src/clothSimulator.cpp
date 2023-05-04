@@ -282,12 +282,15 @@ void ClothSimulator::write_screenshot(int frame_number) {
         sss << "screenshot_" << lt->tm_mon + 1 << "-" << lt->tm_mday << "_"
            << lt->tm_hour << "-" << lt->tm_min << "-" << lt->tm_sec << ".png";
     } else if (frame_number < 10) {
-        sss << "frame_00" << frame_number << ".png";
+        sss << "Video Screenshots/frame_000" << frame_number << ".png";
     } else if (frame_number < 100) {
-        sss << "frame_0" << frame_number << ".png";
+        sss << "Video Screenshots/frame_00" << frame_number << ".png";
+    } else if (frame_number < 1000) {
+        sss << "Video Screenshots/frame_0" << frame_number << ".png";
     } else {
-        sss << "frame_" << frame_number << ".png";
+        sss << "Video Screenshots/frame_" << frame_number << ".png";
     }
+
     string file = sss.str();
     cout << "Writing file " << file << "...";
     if (lodepng::encode(file, flippedPixels, screen_w, screen_h))

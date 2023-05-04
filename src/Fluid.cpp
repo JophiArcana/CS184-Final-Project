@@ -306,18 +306,16 @@ int trianglePosTable[256][16] =
          {0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
          {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}};
 
-const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9, 0.01801528, 1E-6, 2.1510E9, 7);
+const struct FluidParameters Fluid::WATER(997, 642.503643481, 0.31E-9, 0.01801528);
 
 Fluid::Fluid(double length, double width, double height, int nParticles, FluidParameters params) :
         LENGTH(length), WIDTH(width), HEIGHT(height), NUM_PARTICLES(nParticles), PARAMS(params), grid_toggle(true) {
-    this->VOLUME = length * width * height;
+    this->VOLUME = length * width * height / 3;
     double true_num_particles = VOLUME * PARAMS.density * 6.022E23 / PARAMS.molar_mass;
     double ratio = true_num_particles / nParticles;
 
     this->SMOOTHING_RADIUS = 1.8 * PARAMS.average_distance * std::cbrt(ratio);
     this->PARTICLE_MASS = VOLUME * PARAMS.density / nParticles;
-
-    cout << this->SMOOTHING_RADIUS << endl;
 
     this->SELF_KERNEL = 1. / (PI * std::pow(this->SMOOTHING_RADIUS, 3));
     this->KERNEL_COEFF = 1.5 * this->SELF_KERNEL;
@@ -328,14 +326,13 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     this->CELL_SIZE = 2. * this->SMOOTHING_RADIUS;
     this->G_LENGTH = (int) (LENGTH / CELL_SIZE) + 1;
     this->G_WIDTH = (int) (WIDTH / CELL_SIZE) + 1;
-    this->G_HEIGHT = (int) (3 * HEIGHT / CELL_SIZE);
+    this->G_HEIGHT = (int) (HEIGHT / CELL_SIZE) + 1;
     this->G_SIZE = G_LENGTH * G_WIDTH * G_HEIGHT;
 
     this->grid1 = new std::vector<PointMass *>[G_SIZE];
     this->grid2 = new std::vector<PointMass *>[G_SIZE];
     this->list = std::vector<PointMass *>();
     this->list.reserve(NUM_PARTICLES);
-    cout << "Grid size " << G_SIZE << endl;
     if (this->grid1 == nullptr || this->grid2 == nullptr)
         throw std::bad_alloc();
 
@@ -362,7 +359,8 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     std::uniform_real_distribution<double> uniform_dist(0.0, 1.0);
 
     for (int i = 0; i < nParticles; i += 1) {
-        Vector3D position = Vector3D(LENGTH * (0.5 * (1 - std::sqrt(0.5)) + std::sqrt(0.5) * uniform_dist(gen)), WIDTH * (0.5 * (1 - std::sqrt(0.5)) + std::sqrt(0.5) * uniform_dist(gen)), HEIGHT * (2 * uniform_dist(gen)));
+        // Vector3D position = Vector3D(LENGTH * (0.5 * (1 - std::sqrt(0.5)) + std::sqrt(0.5) * uniform_dist(gen)), WIDTH * (0.5 * (1 - std::sqrt(0.5)) + std::sqrt(0.5) * uniform_dist(gen)), HEIGHT * (2 * uniform_dist(gen)));
+        Vector3D position = Vector3D(LENGTH * uniform_dist(gen), WIDTH * uniform_dist(gen), HEIGHT * (1. / 3 + uniform_dist(gen) / 3));
         Vector3D velocity = Vector3D(norm_dist(gen), norm_dist(gen), norm_dist(gen));
         PointMass *pm = new PointMass(position, velocity, false);
         this->list.push_back(pm);
@@ -384,13 +382,13 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
         }
     }
 
-    double average_density = 0;
-    for (int index = 0; index < G_SIZE; index++) {
-        std::vector<double> density = this->batch_density(this->batch_W(index));
-        average_density = std::accumulate(density.begin(), density.end(), average_density);
-    }
-    average_density /= NUM_PARTICLES;
-    cout << "Average starting density " << average_density << endl;
+//    double average_density = 0;
+//    for (int index = 0; index < G_SIZE; index++) {
+//        std::vector<double> density = this->batch_density(this->batch_W(index));
+//        average_density = std::accumulate(density.begin(), density.end(), average_density);
+//    }
+//    average_density /= NUM_PARTICLES;
+//    cout << "Average starting density " << average_density << endl;
 }
 
 inline std::vector<PointMass *> *Fluid::grid() const {
@@ -524,11 +522,12 @@ Fluid::simulate(double frames_per_sec, double simulation_steps, const std::vecto
 #endif
 
 
-    // cout << "Velocity update vmax " << vmax << endl;
-    // cout << "Velocity updates done" << endl;
 
-    // this->debugFluidMesh();
+#ifdef DEBUG
+    this->buildDebugFluidMesh();
+#else
     this->buildFluidMesh();
+#endif
 
 
     double end_t = (double) chrono::duration_cast<chrono::nanoseconds>(
@@ -669,9 +668,6 @@ void Fluid::constrain_update() {
 
 
 void Fluid::cell_update() {
-    // std::vector<PointMass *> *new_grid = new std::vector<PointMass *>[G_SIZE];
-    // std::vector<PointMass *> new_grid[G_SIZE];
-    // cout << "cell update start" << endl;
     std::vector<PointMass *> *old_grid, *new_grid;
     if (this->grid_toggle) {
         old_grid = this->grid1;
@@ -681,20 +677,15 @@ void Fluid::cell_update() {
         new_grid = this->grid1;
     }
 
-    // cout << "clearing" << endl;
     for (int index = 0; index < G_SIZE; index++) {
         new_grid[index].clear();
     }
-    // cout << "assignment" << endl;
     for (int index = 0; index < G_SIZE; index++) {
         for (PointMass *pm: old_grid[index]) {
             new_grid[this->get_index(pm->tentative_position)].push_back(pm);
         }
     }
     this->grid_toggle = !this->grid_toggle;
-    // delete[] this->grid;
-    // this->grid = new_grid;
-    // cout << "cell update end" << endl;
 }
 
 double Fluid::helper(Vector3D position, Vector3D corner) const {
@@ -723,158 +714,187 @@ void Fluid::buildFluidMesh() {
     // all vertices outside mesh with adjacent vertex inside the mesh
     vector<Vector3D> surface_vertices = vector<Vector3D>();
 
-    for (int i = 0; i < G_LENGTH * SUBDIVISION; i += 1) {
-        for (int j = 0; j < G_WIDTH * SUBDIVISION; j += 1) {
-            for (int k = 0; k < G_HEIGHT * SUBDIVISION; k += 1) {
-                int x = i / SUBDIVISION;
-                int y = j / SUBDIVISION;
-                int z = k / SUBDIVISION;
-                int index = z + G_HEIGHT * (y + G_WIDTH * x);
-                int bitmap = 0;
-                vector<double> pressures = vector<double>(8);
+#ifdef MULTITHREAD
+    auto generate_mesh = [&](int thread_num) {
+        for (int subdivision_index = thread_num; subdivision_index < G_SIZE * (int) std::pow(SUBDIVISION, 3); subdivision_index += N_THREADS) {
+#else
+        for (int subdivision_index = 0;
+             subdivision_index < G_SIZE * (int) std::pow(SUBDIVISION, 3); subdivision_index++) {
+#endif
+            int i = subdivision_index / (G_WIDTH * G_HEIGHT * SUBDIVISION * SUBDIVISION);
+            int j = (subdivision_index / (G_HEIGHT * SUBDIVISION)) % (G_WIDTH * SUBDIVISION);
+            int k = subdivision_index % (G_HEIGHT * SUBDIVISION);
 
-                for (int q = 0; q < 8; q += 1) {
-                    Vector3D pos = Vector3D(i * 1.0 / SUBDIVISION + dx[q], j * 1.0 / SUBDIVISION + dy[q], k * 1.0 / SUBDIVISION + dz[q]);
-                    for (PointMass *pm: this->grid()[index]) {
+            int x = i / SUBDIVISION;
+            int y = j / SUBDIVISION;
+            int z = k / SUBDIVISION;
+            int index = z + G_HEIGHT * (y + G_WIDTH * x);
+            int bitmap = 0;
+            vector<double> pressures = vector<double>(8);
+
+            for (int q = 0; q < 8; q += 1) {
+                Vector3D pos = Vector3D(i * 1.0 / SUBDIVISION + dx[q], j * 1.0 / SUBDIVISION + dy[q],
+                                        k * 1.0 / SUBDIVISION + dz[q]);
+                for (PointMass *pm: this->grid()[index]) {
+                    pressures[q] += helper(pm->position, pos);
+                }
+                // point masses from neighboring cells
+                if (z != 0) {
+                    for (PointMass *pm: this->grid()[index - 1]) {
                         pressures[q] += helper(pm->position, pos);
                     }
-                    // point masses from neighboring cells
-                    if (z != 0) {
-                        for (PointMass *pm: this->grid()[index - 1]) {
-                            pressures[q] += helper(pm->position, pos);
-                        }
-                    }
-                    if (z != G_HEIGHT - 1) {
-                        for (PointMass *pm: this->grid()[index + 1]) {
-                            pressures[q] += helper(pm->position, pos);
-                        }
-                    }
-
-                    if (y != 0) {
-                        for (PointMass *pm: this->grid()[index - G_HEIGHT]) {
-                            pressures[q] += helper(pm->position, pos);
-                        }
-                    }
-                    if (y != G_WIDTH - 1) {
-                        for (PointMass *pm: this->grid()[index + G_HEIGHT]) {
-                            pressures[q] += helper(pm->position, pos);
-                        }
-                    }
-
-                    if (x != 0) {
-                        for (PointMass *pm: this->grid()[index - G_HEIGHT * G_WIDTH]) {
-                            pressures[q] += helper(pm->position, pos);
-                        }
-                    }
-                    if (x != G_LENGTH - 1) {
-                        for (PointMass *pm: this->grid()[index + G_HEIGHT * G_WIDTH]) {
-                            pressures[q] += helper(pm->position, pos);
-                        }
-                    }
-
                 }
-                for (int q = 0; q < 8; q += 1) {
-                    if (pressures[q] < THRESHOLD) {
-                        bitmap |= (1 << q);
+                if (z != G_HEIGHT - 1) {
+                    for (PointMass *pm: this->grid()[index + 1]) {
+                        pressures[q] += helper(pm->position, pos);
                     }
                 }
 
-                if (bitmap == 0 || bitmap == 255) { // all on one side of the surface
+                if (y != 0) {
+                    for (PointMass *pm: this->grid()[index - G_HEIGHT]) {
+                        pressures[q] += helper(pm->position, pos);
+                    }
+                }
+                if (y != G_WIDTH - 1) {
+                    for (PointMass *pm: this->grid()[index + G_HEIGHT]) {
+                        pressures[q] += helper(pm->position, pos);
+                    }
+                }
+
+                if (x != 0) {
+                    for (PointMass *pm: this->grid()[index - G_HEIGHT * G_WIDTH]) {
+                        pressures[q] += helper(pm->position, pos);
+                    }
+                }
+                if (x != G_LENGTH - 1) {
+                    for (PointMass *pm: this->grid()[index + G_HEIGHT * G_WIDTH]) {
+                        pressures[q] += helper(pm->position, pos);
+                    }
+                }
+
+            }
+            for (int q = 0; q < 8; q += 1) {
+                if (pressures[q] < THRESHOLD) {
+                    bitmap |= (1 << q);
+                }
+            }
+
+            if (bitmap == 0 || bitmap == 255) { // all on one side of the surface
+                continue;
+            }
+
+            // cout << this->grid()[index].size() << endl;
+
+            int visited = 0;
+
+            for (int q = 0; q < 8; q += 1) {
+                if ((visited & (1 << q)) != 0) { // already visited
+                    continue;
+                }
+                if (pressures[q] > THRESHOLD) {
                     continue;
                 }
 
-                // cout << this->grid()[index].size() << endl;
-
-                int visited = 0;
-
-                for (int q = 0; q < 8; q += 1) {
-                    if ((visited & (1 << q)) != 0) { // already visited
+                vector<int> queue = vector<int>(); // stores 010
+                vector<Vector3D> vertices = vector<Vector3D>(); //
+                queue.push_back(q);
+                while (queue.size() > 0) {
+                    int ind = queue.back();
+                    queue.pop_back();
+                    // cout << ind << " " << visited << endl;
+                    if ((visited & (1 << ind)) != 0) {
                         continue;
                     }
-                    if (pressures[q] > THRESHOLD) {
-                        continue;
-                    }
 
-                    vector<int> queue = vector<int>(); // stores 010
-                    vector<Vector3D> vertices = vector<Vector3D>(); //
-                    queue.push_back(q);
-                    while (queue.size() > 0) {
-                        int ind = queue.back();
-                        queue.pop_back();
-                        // cout << ind << " " << visited << endl;
-                        if ((visited & (1 << ind)) != 0) {
-                            continue;
-                        }
+                    // cout << queue.size() << endl;
 
-                        // cout << queue.size() << endl;
+                    visited |= (1 << ind);
 
-                        visited |= (1 << ind);
-
-                        for (int toXor: neighbors) {
-                            int nextInd = ind ^ toXor;
-                            if (pressures[nextInd] > THRESHOLD) {
-                                // vertex on edge
-                                double pressure1 = pressures[ind] - THRESHOLD;
-                                double pressure2 = pressures[nextInd] - THRESHOLD;
-                                if (pressure1 > 0 || pressure2 < 0) {
-                                    throw std::runtime_error("pressures wrong");
-                                }
-                                double t = pressure2 / (pressure2 - pressure1);
-                                Vector3D point = Vector3D(i, j, k);
-                                point[0] += t * dx[ind] + (1 - t) * dx[nextInd];
-                                point[1] += t * dy[ind] + (1 - t) * dy[nextInd];
-                                point[2] += t * dz[ind] + (1 - t) * dz[nextInd];
-                                point[0] *= LENGTH / G_LENGTH / SUBDIVISION;
-                                point[1] *= WIDTH / G_WIDTH / SUBDIVISION;
-                                point[2] *= HEIGHT / G_HEIGHT / SUBDIVISION;
-                                vertices.push_back(point);
-
-                                Vector3D original_point = Vector3D(i, j, k);
-                                original_point[0] += dx[ind];
-                                original_point[1] += dy[ind];
-                                original_point[2] += dz[ind];
-                                original_point[0] *= LENGTH / G_LENGTH / SUBDIVISION;
-                                original_point[1] *= WIDTH / G_WIDTH / SUBDIVISION;
-                                original_point[2] *= HEIGHT / G_HEIGHT / SUBDIVISION;
-                                surface_vertices.push_back(original_point);
-                            } else {
-                                queue.push_back(nextInd);
+                    for (int toXor: neighbors) {
+                        int nextInd = ind ^ toXor;
+                        if (pressures[nextInd] > THRESHOLD) {
+                            // vertex on edge
+                            double pressure1 = pressures[ind] - THRESHOLD;
+                            double pressure2 = pressures[nextInd] - THRESHOLD;
+                            if (pressure1 > 0 || pressure2 < 0) {
+                                throw std::runtime_error("pressures wrong");
                             }
+                            double t = pressure2 / (pressure2 - pressure1);
+                            Vector3D point = Vector3D(i, j, k);
+                            point[0] += t * dx[ind] + (1 - t) * dx[nextInd];
+                            point[1] += t * dy[ind] + (1 - t) * dy[nextInd];
+                            point[2] += t * dz[ind] + (1 - t) * dz[nextInd];
+                            point[0] *= LENGTH / G_LENGTH / SUBDIVISION;
+                            point[1] *= WIDTH / G_WIDTH / SUBDIVISION;
+                            point[2] *= HEIGHT / G_HEIGHT / SUBDIVISION;
+                            vertices.push_back(point);
+
+                            Vector3D original_point = Vector3D(i, j, k);
+                            original_point[0] += dx[ind];
+                            original_point[1] += dy[ind];
+                            original_point[2] += dz[ind];
+                            original_point[0] *= LENGTH / G_LENGTH / SUBDIVISION;
+                            original_point[1] *= WIDTH / G_WIDTH / SUBDIVISION;
+                            original_point[2] *= HEIGHT / G_HEIGHT / SUBDIVISION;
+#ifdef MULTITHREAD
+                            mesh->mtx.lock();
+                            surface_vertices.push_back(original_point);
+                            mesh->mtx.unlock();
+#else
+                            surface_vertices.push_back(original_point);
+#endif
+                        } else {
+                            queue.push_back(nextInd);
                         }
                     }
-                    // convert vertices into a mesh
+                }
+                // convert vertices into a mesh
 
-                    if (vertices.size() < 3) {
+                if (vertices.size() < 3) {
 //                        cout << "ERROR " << vertices.size() << endl;
 //                        continue;
-                    } else {
-                        // cout << "SUCCESS" << endl;
-                    }
-                    // TODO: check if we need to run this 8 times
-                    // i think we do
-                    for (int ii = 0; ii <= vertices.size() - 3; ii += 1) { // TODO change uv values of triangle
-                        // 0, ii + 1, ii + 2
-                        Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],
-                                          vertices[ii + 1], vertices[ii + 2]);
-                        mesh->triangles.emplace_back(triangle);
-                    }
-
+                } else {
+                    // cout << "SUCCESS" << endl;
                 }
+                // TODO: check if we need to run this 8 times
+                // i think we do
+                for (int ii = 0; ii <= vertices.size() - 3; ii += 1) { // TODO change uv values of triangle
+                    // 0, ii + 1, ii + 2
+                    Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],
+                                      vertices[ii + 1], vertices[ii + 2]);
+#ifdef MULTITHREAD
+                    mesh->mtx.lock();
+                    mesh->triangles.emplace_back(triangle);
+                    mesh->mtx.unlock();
+#else
+                    mesh->triangles.emplace_back(triangle);
+#endif
+                }
+
             }
         }
+        // I think this can maybe be done in the "for (int toXor: neighbors)" for loop to save pressure recalculation
+        for (int ii = 0; ii <= surface_vertices.size() - 2; ii += 1) {
+            // TODO: finish this out
+            // 0, ii + 1, ii + 2
+            // Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],
+            //                  vertices[ii + 1], vertices[ii + 2]);
+            // mesh->triangles.emplace_back(triangle);
+        }
+#ifdef MULTITHREAD
+    };
+    std::thread threads[N_THREADS];
+    for (int thread_num = 0; thread_num < N_THREADS; thread_num++) {
+        threads[thread_num] = std::thread(generate_mesh, thread_num);
     }
-    // I think this can maybe be done in the "for (int toXor: neighbors)" for loop to save pressure recalculation
-    for (int ii = 0; ii <= surface_vertices.size() - 2; ii += 1) {
-        // TODO: finish this out
-        // 0, ii + 1, ii + 2
-        // Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],
-        //                  vertices[ii + 1], vertices[ii + 2]);
-        // mesh->triangles.emplace_back(triangle);
+    for (auto &thread: threads) {
+        thread.join();
     }
+#endif
 }
 
 
-void Fluid::debugFluidMesh() {
+void Fluid::buildDebugFluidMesh() {
     mesh->triangles.clear();
     Vector3D offset[4] = {
             {0.,          0.,          0.05},

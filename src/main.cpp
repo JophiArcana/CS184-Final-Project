@@ -278,7 +278,7 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
             // cloth->pinned = pinned;
 
             // Cloth parameters
-            double density, rms_velocity, average_distance, molar_mass, kinematic_viscosity, tait_coefficient;
+            double density, rms_velocity, average_distance, molar_mass;
 
             auto it_density = object.find("density");
             if (it_density != object.end()) {
@@ -308,26 +308,10 @@ bool loadObjectsFromFile(string filename, Fluid *fluid, FluidParameters *fp, vec
                 incompleteObjectError("fluid", "molar_mass");
             }
 
-            auto it_kinematic_viscosity = object.find("kinematic_viscosity");
-            if (it_kinematic_viscosity != object.end()) {
-                kinematic_viscosity = *it_kinematic_viscosity;
-            } else {
-                incompleteObjectError("fluid", "kinematic_viscosity");
-            }
-
-            auto it_tait_coefficient = object.find("tait_coefficient");
-            if (it_tait_coefficient != object.end()) {
-                tait_coefficient = *it_tait_coefficient;
-            } else {
-                incompleteObjectError("fluid", "tait_coefficient");
-            }
-
             fp->density = density;
             fp->rms_velocity = rms_velocity;
             fp->average_distance = average_distance;
             fp->molar_mass = molar_mass;
-            fp->kinematic_viscosity = kinematic_viscosity;
-            fp->tait_coefficient = tait_coefficient;
         } else if (key == SPHERE) {
             Vector3D origin;
             double radius, friction;
@@ -495,7 +479,7 @@ int main(int argc, char **argv) {
 
     FluidParameters fp = Fluid::WATER;
 
-    Fluid fluid(2, 2, 1, 2000, fp);
+    Fluid fluid(2, 2, 3, 2000, fp);
 
     vector<CollisionObject *> objects;
 
@@ -509,8 +493,11 @@ int main(int argc, char **argv) {
     createGLContexts();
 
     // Initialize the Cloth object
-    // fluid.buildFluidMesh();
-    fluid.debugFluidMesh();
+#ifdef DEBUG
+    fluid.buildDebugFluidMesh();
+#else
+    fluid.buildFluidMesh();
+#endif
 
     // Initialize the ClothSimulator object
     app = new ClothSimulator(project_root, screen);

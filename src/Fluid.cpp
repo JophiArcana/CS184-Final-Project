@@ -323,10 +323,10 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
     this->SCORR_COEFF = -0.001 / std::pow(0.65 * this->KERNEL_COEFF, 4);
     this->SELF_SCORR = this->SCORR_COEFF * std::pow(this->SELF_KERNEL, 4);
 
-    this->CELL_SIZE = 2. * this->SMOOTHING_RADIUS;
-    this->G_LENGTH = (int) (LENGTH / CELL_SIZE) + 1;
-    this->G_WIDTH = (int) (WIDTH / CELL_SIZE) + 1;
-    this->G_HEIGHT = (int) (HEIGHT / CELL_SIZE) + 1;
+    this->CELL_SIZE = 0.5; //2. * this->SMOOTHING_RADIUS;
+    this->G_LENGTH = (int) (LENGTH / CELL_SIZE);
+    this->G_WIDTH = (int) (WIDTH / CELL_SIZE);
+    this->G_HEIGHT = (int) (HEIGHT / CELL_SIZE);
     this->G_SIZE = G_LENGTH * G_WIDTH * G_HEIGHT;
 
     this->grid1 = new std::vector<PointMass *>[G_SIZE];
@@ -380,6 +380,9 @@ Fluid::Fluid(double length, double width, double height, int nParticles, FluidPa
                 }
             }
         }
+//        if (this->grid()[index].size() != 0) {
+//            cout << l << " " << w << " " << h << " " << this->grid()[index].size() << endl;
+//        }
     }
 
 //    double average_density = 0;
@@ -733,8 +736,8 @@ void Fluid::buildFluidMesh() {
             vector<double> pressures = vector<double>(8);
 
             for (int q = 0; q < 8; q += 1) {
-                Vector3D pos = Vector3D(i * 1.0 / SUBDIVISION + dx[q], j * 1.0 / SUBDIVISION + dy[q],
-                                        k * 1.0 / SUBDIVISION + dz[q]);
+                Vector3D pos = Vector3D((i + dx[q]) * 1.0 / SUBDIVISION, (j + dy[q]) * 1.0 / SUBDIVISION,
+                                        (k + dz[q]) * 1.0 / SUBDIVISION);
 
                 for (int qqq = 0; qqq < 27; qqq += 1) {
                     int deltaz = qqq % 3 - 1;

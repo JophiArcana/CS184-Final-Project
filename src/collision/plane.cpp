@@ -77,10 +77,15 @@ void Plane::render(GLShader &shader) {
     MatrixXf positions(3, 4);
     MatrixXf normals(3, 4);
 
-    positions.col(0) << sPoint + 2 * (sCross + sParallel);
-    positions.col(1) << sPoint + 2 * (sCross - sParallel);
-    positions.col(2) << sPoint + 2 * (-sCross + sParallel);
-    positions.col(3) << sPoint + 2 * (-sCross - sParallel);
+    // positions.col(0) << sPoint + 2 * (sCross + sParallel);
+    // positions.col(1) << sPoint + 2 * (sCross - sParallel);
+    // positions.col(2) << sPoint + 2 * (-sCross + sParallel);
+    // positions.col(3) << sPoint + 2 * (-sCross - sParallel);
+
+    positions.col(0) << sPoint - 2.828 * (sCross);
+    positions.col(1) << sPoint - 1.414 * (sParallel + sCross);
+    positions.col(2) << sPoint - 1.414 * (-sParallel + sCross);
+    positions.col(3) << sPoint;
 
     normals.col(0) << sNormal;
     normals.col(1) << sNormal;

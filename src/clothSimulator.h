@@ -36,7 +36,7 @@ public:
 
     virtual bool isAlive();
 
-    virtual void write_screenshot();
+    virtual void write_screenshot(int frame_number);
 
     virtual void drawContents();
 
@@ -86,6 +86,8 @@ private:
 
     CGL::Vector3D gravity = CGL::Vector3D(0, 0, -9.8f);
     nanogui::Color color = nanogui::Color(1.0f, 1.0f, 1.0f, 1.0f);
+
+    int frame_count = 0;
 
 //    Cloth *cloth;
 //    ClothParameters *cp;
@@ -165,6 +167,8 @@ private:
     bool is_alive = true;
 
     Vector2i default_window_size = Vector2i(1024, 800);
+
+
 };
 
 struct UserShader {

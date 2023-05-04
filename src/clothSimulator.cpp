@@ -257,7 +257,7 @@ bool ClothSimulator::isAlive() { return is_alive; }
  * The image filename contains the month, date, hour, minute, and second
  * to make sure it is unique and identifiable.
  */
-void ClothSimulator::write_screenshot() {
+void ClothSimulator::write_screenshot(int frame_number) {
 
     vector<unsigned char> windowPixels(4 * screen_w * screen_h);
     glReadPixels(500, 470,
@@ -271,12 +271,24 @@ void ClothSimulator::write_screenshot() {
     for (int row = 0; row < screen_h; ++row)
         memcpy(&flippedPixels[row * screen_w * 4], &windowPixels[(screen_h - row - 1) * screen_w * 4], 4 * screen_w);
 
+    cout << flippedPixels.size() << " ok " << frame_number << endl;
     time_t t = time(nullptr);
-    tm* lt = localtime(&t);
-    stringstream ss;
-    ss << "screenshot_" << lt->tm_mon + 1 << "-" << lt->tm_mday << "_"
-       << lt->tm_hour << "-" << lt->tm_min << "-" << lt->tm_sec << ".png";
-    string file = ss.str();
+    tm *lt = localtime(&t);
+    //stringstream ss;
+    //ss << "screenshot_" << lt->tm_mon + 1 << "-" << lt->tm_mday << "_"
+    //   << lt->tm_hour << "-" << lt->tm_min << "-" << lt->tm_sec << ".png";
+    stringstream sss;
+    if (frame_number < 0) {
+        sss << "screenshot_" << lt->tm_mon + 1 << "-" << lt->tm_mday << "_"
+           << lt->tm_hour << "-" << lt->tm_min << "-" << lt->tm_sec << ".png";
+    } else if (frame_number < 10) {
+        sss << "frame_00" << frame_number << ".png";
+    } else if (frame_number < 100) {
+        sss << "frame_0" << frame_number << ".png";
+    } else {
+        sss << "frame_" << frame_number << ".png";
+    }
+    string file = sss.str();
     cout << "Writing file " << file << "...";
     if (lodepng::encode(file, flippedPixels, screen_w, screen_h))
         cerr << "Could not be written" << endl;
@@ -352,6 +364,11 @@ void ClothSimulator::drawContents() {
 
     for (CollisionObject *co: *collision_objects) {
         co->render(shader);
+    }
+
+    if (!is_paused) {
+        frame_count += 1;
+        write_screenshot(frame_count);
     }
 }
 
@@ -647,7 +664,7 @@ bool ClothSimulator::keyCallbackEvent(int key, int scancode, int action,
                 break;
             case 's':
             case 'S':
-                write_screenshot();
+                write_screenshot(-1);
                 break;
             case 'n':
             case 'N':

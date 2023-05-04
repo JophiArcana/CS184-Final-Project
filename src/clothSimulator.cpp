@@ -18,6 +18,8 @@
 
 #include "misc/stb_image.h"
 
+#include "CGL/lodepng.h"
+
 using namespace nanogui;
 using namespace std;
 
@@ -249,6 +251,38 @@ void ClothSimulator::init() {
 }
 
 bool ClothSimulator::isAlive() { return is_alive; }
+
+/**
+ * Writes the contents of the pixel buffer to disk as a .png file.
+ * The image filename contains the month, date, hour, minute, and second
+ * to make sure it is unique and identifiable.
+ */
+void ClothSimulator::write_screenshot() {
+
+    vector<unsigned char> windowPixels(4 * screen_w * screen_h);
+    glReadPixels(500, 470,
+                 screen_w,
+                 screen_h,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 &windowPixels[0]);
+
+    vector<unsigned char> flippedPixels(4 * screen_w * screen_h);
+    for (int row = 0; row < screen_h; ++row)
+        memcpy(&flippedPixels[row * screen_w * 4], &windowPixels[(screen_h - row - 1) * screen_w * 4], 4 * screen_w);
+
+    time_t t = time(nullptr);
+    tm* lt = localtime(&t);
+    stringstream ss;
+    ss << "screenshot_" << lt->tm_mon + 1 << "-" << lt->tm_mday << "_"
+       << lt->tm_hour << "-" << lt->tm_min << "-" << lt->tm_sec << ".png";
+    string file = ss.str();
+    cout << "Writing file " << file << "...";
+    if (lodepng::encode(file, flippedPixels, screen_w, screen_h))
+        cerr << "Could not be written" << endl;
+    else
+        cout << "Success! Screenshot written" << endl;
+}
 
 void ClothSimulator::drawContents() {
     glEnable(GL_DEPTH_TEST);
@@ -610,6 +644,10 @@ bool ClothSimulator::keyCallbackEvent(int key, int scancode, int action,
             case 'p':
             case 'P':
                 is_paused = !is_paused;
+                break;
+            case 's':
+            case 'S':
+                write_screenshot();
                 break;
             case 'n':
             case 'N':

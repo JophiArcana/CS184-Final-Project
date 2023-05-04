@@ -36,6 +36,8 @@ public:
 
     virtual bool isAlive();
 
+    virtual void write_screenshot();
+
     virtual void drawContents();
 
     // Screen events

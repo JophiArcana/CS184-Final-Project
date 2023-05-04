@@ -735,42 +735,61 @@ void Fluid::buildFluidMesh() {
             for (int q = 0; q < 8; q += 1) {
                 Vector3D pos = Vector3D(i * 1.0 / SUBDIVISION + dx[q], j * 1.0 / SUBDIVISION + dy[q],
                                         k * 1.0 / SUBDIVISION + dz[q]);
-                for (PointMass *pm: this->grid()[index]) {
-                    pressures[q] += helper(pm->position, pos);
-                }
-                // point masses from neighboring cells
-                if (z != 0) {
-                    for (PointMass *pm: this->grid()[index - 1]) {
-                        pressures[q] += helper(pm->position, pos);
-                    }
-                }
-                if (z != G_HEIGHT - 1) {
-                    for (PointMass *pm: this->grid()[index + 1]) {
-                        pressures[q] += helper(pm->position, pos);
-                    }
-                }
 
-                if (y != 0) {
-                    for (PointMass *pm: this->grid()[index - G_HEIGHT]) {
+                for (int qqq = 0; qqq < 27; qqq += 1) {
+                    int deltaz = qqq % 3 - 1;
+                    int deltay = (qqq / 3) % 3 - 1;
+                    int deltax = (qqq / 9) % 3 - 1;
+                    int nx = x + deltax;
+                    int ny = y + deltay;
+                    int nz = z + deltaz;
+                    if (nx < 0 || ny < 0 || nz < 0) {
+                        continue;
+                    }
+                    if (nx >= G_LENGTH || ny >= G_WIDTH || nz >= G_HEIGHT) {
+                        continue;
+                    }
+                    int index2 = nz + G_HEIGHT * (ny + G_WIDTH * nx);
+                    for (PointMass *pm: this->grid()[index2]) {
                         pressures[q] += helper(pm->position, pos);
                     }
                 }
-                if (y != G_WIDTH - 1) {
-                    for (PointMass *pm: this->grid()[index + G_HEIGHT]) {
-                        pressures[q] += helper(pm->position, pos);
-                    }
-                }
-
-                if (x != 0) {
-                    for (PointMass *pm: this->grid()[index - G_HEIGHT * G_WIDTH]) {
-                        pressures[q] += helper(pm->position, pos);
-                    }
-                }
-                if (x != G_LENGTH - 1) {
-                    for (PointMass *pm: this->grid()[index + G_HEIGHT * G_WIDTH]) {
-                        pressures[q] += helper(pm->position, pos);
-                    }
-                }
+//                for (PointMass *pm: this->grid()[index]) {
+//                    pressures[q] += helper(pm->position, pos);
+//                }
+//                // point masses from neighboring cells
+//                if (z != 0) {
+//                    for (PointMass *pm: this->grid()[index - 1]) {
+//                        pressures[q] += helper(pm->position, pos);
+//                    }
+//                }
+//                if (z != G_HEIGHT - 1) {
+//                    for (PointMass *pm: this->grid()[index + 1]) {
+//                        pressures[q] += helper(pm->position, pos);
+//                    }
+//                }
+//
+//                if (y != 0) {
+//                    for (PointMass *pm: this->grid()[index - G_HEIGHT]) {
+//                        pressures[q] += helper(pm->position, pos);
+//                    }
+//                }
+//                if (y != G_WIDTH - 1) {
+//                    for (PointMass *pm: this->grid()[index + G_HEIGHT]) {
+//                        pressures[q] += helper(pm->position, pos);
+//                    }
+//                }
+//
+//                if (x != 0) {
+//                    for (PointMass *pm: this->grid()[index - G_HEIGHT * G_WIDTH]) {
+//                        pressures[q] += helper(pm->position, pos);
+//                    }
+//                }
+//                if (x != G_LENGTH - 1) {
+//                    for (PointMass *pm: this->grid()[index + G_HEIGHT * G_WIDTH]) {
+//                        pressures[q] += helper(pm->position, pos);
+//                    }
+//                }
 
             }
             for (int q = 0; q < 8; q += 1) {

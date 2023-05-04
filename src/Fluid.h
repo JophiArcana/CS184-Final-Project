@@ -81,7 +81,6 @@ public:
     FluidParameters PARAMS;
     double VOLUME, SMOOTHING_RADIUS, PARTICLE_MASS;
 
-
     std::vector<CollisionObject *> collisionObjects;
 
     FluidMesh *mesh;
@@ -91,6 +90,8 @@ public:
 
     std::vector<double> timestamps;
     e_orientation orientation;
+
+    double helper(Vector3D position, Vector3D corner) const;
 
     double W(PointMass *pi, PointMass *pj) const;
     Vector3D scaled_grad_W(PointMass *pi, PointMass *pj) const;

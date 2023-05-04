@@ -697,51 +697,28 @@ void Fluid::cell_update() {
     // cout << "cell update end" << endl;
 }
 
+double Fluid::helper(Vector3D position, Vector3D corner) const {
+    double distance = (position / CELL_SIZE - corner).norm();
+    if (distance > 1) {
+        return 0;
+    }
+    return 1 / pow(max(0.1, distance), 3);
+}
+
 
 void Fluid::buildFluidMesh() {
-    /** TODO: implement mesh construction */
     mesh->triangles.clear();
 
     int SUBDIVISION = 4;
-
-//    vector<double> pressures = vector<double>((G_LENGTH + 1) * (G_WIDTH + 1) * (G_HEIGHT + 1));
-//
-//    for (int i = 0; i <= G_LENGTH; i += 1) {
-//        for (int j = 0; j <= G_WIDTH; j += 1) {
-//            for (int k = 0; k <= G_HEIGHT; k += 1) {
-//                int index = k + (G_WIDTH + 1) * (j + (G_LENGTH + 1) * i);
-//                pressures[index] = 0.0;
-//            }
-//        }
-//    }
 
     vector<int> dx = {0, 0, 0, 0, 1, 1, 1, 1};
     vector<int> dy = {0, 0, 1, 1, 0, 0, 1, 1};
     vector<int> dz = {0, 1, 0, 1, 0, 1, 0, 1};
 
-//    for (int i = 0; i < G_LENGTH; i += 1) {
-//        for (int j = 0; j < G_WIDTH; j += 1) {
-//            for (int k = 0; k < G_HEIGHT; k += 1) {
-//                int index = k + G_WIDTH * (j + G_LENGTH * i);
-//                vector<PointMass *> points = this->grid()[index];
-//                for (int q = 0; q < 8; q += 1) {
-//                    Vector3D pos = Vector3D(i + dx[q], j + dy[q], k + dz[q]);
-//                    int index2 = index + dz[q] + G_WIDTH * (dy[q] + G_LENGTH * dx[q]);
-//                    for (PointMass *pm: points) {
-//                        pressures[index2] += 1 / max(0.01, (pos - pm->position).norm());
-//                    }
-//                }
-//            }
-//        }
-//    }
-
-    // probably don't need this
-    // vector<int> cubeBitmap = vector<int>(G_SIZE);
-
     vector<int> neighbors = {4, 2, 1};
 
     // TODO change value
-    double THRESHOLD = 55;
+    double THRESHOLD = 15;
 
     // all vertices outside mesh with adjacent vertex inside the mesh
     vector<Vector3D> surface_vertices = vector<Vector3D>();
@@ -755,42 +732,43 @@ void Fluid::buildFluidMesh() {
                 int index = z + G_HEIGHT * (y + G_WIDTH * x);
                 int bitmap = 0;
                 vector<double> pressures = vector<double>(8);
+
                 for (int q = 0; q < 8; q += 1) {
                     Vector3D pos = Vector3D(i * 1.0 / SUBDIVISION + dx[q], j * 1.0 / SUBDIVISION + dy[q], k * 1.0 / SUBDIVISION + dz[q]);
-                    for (PointMass *pm: this->grid()[index]) { // TODO include pointmasses in neighboring cells
-                        pressures[q] += 1 / max(0.01, (pm->position / CELL_SIZE - pos).norm());
+                    for (PointMass *pm: this->grid()[index]) {
+                        pressures[q] += helper(pm->position, pos);
                     }
                     // point masses from neighboring cells
                     if (z != 0) {
                         for (PointMass *pm: this->grid()[index - 1]) {
-                            pressures[q] += 1 / max(0.003, (pm->position / CELL_SIZE - pos).norm());
+                            pressures[q] += helper(pm->position, pos);
                         }
                     }
                     if (z != G_HEIGHT - 1) {
                         for (PointMass *pm: this->grid()[index + 1]) {
-                            pressures[q] += 1 / max(0.003, (pm->position / CELL_SIZE - pos).norm());
+                            pressures[q] += helper(pm->position, pos);
                         }
                     }
 
                     if (y != 0) {
                         for (PointMass *pm: this->grid()[index - G_HEIGHT]) {
-                            pressures[q] += 1 / max(0.003, (pm->position / CELL_SIZE - pos).norm());
+                            pressures[q] += helper(pm->position, pos);
                         }
                     }
                     if (y != G_WIDTH - 1) {
                         for (PointMass *pm: this->grid()[index + G_HEIGHT]) {
-                            pressures[q] += 1 / max(0.003, (pm->position / CELL_SIZE - pos).norm());
+                            pressures[q] += helper(pm->position, pos);
                         }
                     }
 
                     if (x != 0) {
                         for (PointMass *pm: this->grid()[index - G_HEIGHT * G_WIDTH]) {
-                            pressures[q] += 1 / max(0.003, (pm->position / CELL_SIZE - pos).norm());
+                            pressures[q] += helper(pm->position, pos);
                         }
                     }
                     if (x != G_LENGTH - 1) {
                         for (PointMass *pm: this->grid()[index + G_HEIGHT * G_WIDTH]) {
-                            pressures[q] += 1 / max(0.003, (pm->position / CELL_SIZE - pos).norm());
+                            pressures[q] += helper(pm->position, pos);
                         }
                     }
 
@@ -804,6 +782,8 @@ void Fluid::buildFluidMesh() {
                 if (bitmap == 0 || bitmap == 255) { // all on one side of the surface
                     continue;
                 }
+
+                // cout << this->grid()[index].size() << endl;
 
                 int visited = 0;
 
@@ -836,6 +816,9 @@ void Fluid::buildFluidMesh() {
                                 // vertex on edge
                                 double pressure1 = pressures[ind] - THRESHOLD;
                                 double pressure2 = pressures[nextInd] - THRESHOLD;
+                                if (pressure1 > 0 || pressure2 < 0) {
+                                    throw std::runtime_error("pressures wrong");
+                                }
                                 double t = pressure2 / (pressure2 - pressure1);
                                 Vector3D point = Vector3D(i, j, k);
                                 point[0] += t * dx[ind] + (1 - t) * dx[nextInd];
@@ -868,6 +851,7 @@ void Fluid::buildFluidMesh() {
                         // cout << "SUCCESS" << endl;
                     }
                     // TODO: check if we need to run this 8 times
+                    // i think we do
                     for (int ii = 0; ii <= vertices.size() - 3; ii += 1) { // TODO change uv values of triangle
                         // 0, ii + 1, ii + 2
                         Triangle triangle(vertices[0], vertices[ii + 1], vertices[ii + 2], vertices[0],

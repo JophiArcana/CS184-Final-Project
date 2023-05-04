@@ -495,7 +495,7 @@ int main(int argc, char **argv) {
 
     FluidParameters fp = Fluid::WATER;
 
-    Fluid fluid(2, 2, 1, 2500, fp);
+    Fluid fluid(2, 2, 1, 2000, fp);
 
     vector<CollisionObject *> objects;
 

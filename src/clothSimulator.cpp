@@ -220,8 +220,8 @@ void ClothSimulator::init() {
 //    }
 
 //    CGL::Vector3D target(avg_pm_position.x, avg_pm_position.y / 2, avg_pm_position.z);
-    CGL::Vector3D target(0.5, 0.5, 0.5);
-    CGL::Vector3D c_dir(1, 1, 1);
+    CGL::Vector3D target(fluid->LENGTH / 2, fluid->WIDTH / 2, 0.5);
+    CGL::Vector3D c_dir(0, -0.7, 1);
     c_dir.normalize();
     // canonical_view_distance = max(cloth->width, cloth->height) * 0.9;
     canonical_view_distance = max(fluid->WIDTH, fluid->HEIGHT) * 10;
@@ -243,6 +243,9 @@ void ClothSimulator::init() {
 
     camera.configure(camera_info, screen_w, screen_h);
     canonicalCamera.configure(camera_info, screen_w, screen_h);
+
+    active_shader_idx = PHONG;
+    camera.move_forward(30);
 }
 
 bool ClothSimulator::isAlive() { return is_alive; }
